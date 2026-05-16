@@ -307,8 +307,9 @@ class _PlayerScreenState extends State<PlayerScreen>
                                           _showDurationPicker =
                                               !_showDurationPicker),
                                       child: Container(
+                                        height: 48,
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 12),
+                                          horizontal: 16),
                                         decoration: BoxDecoration(
                                           color: Colors.white.withOpacity(0.09),
                                           borderRadius:

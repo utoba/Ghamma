@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/void_screen.dart'; // importa PlayerScreen (void page)
+import 'screens/void_screen.dart';
 
 class MenuScreen extends StatelessWidget {
   const MenuScreen({super.key});
@@ -8,7 +8,6 @@ class MenuScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        // stesso gradient di void page
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topRight,
@@ -29,7 +28,6 @@ class MenuScreen extends StatelessWidget {
               children: [
                 const SizedBox(height: 64),
 
-                // ── titolo ANANDA ──
                 const Center(
                   child: Text(
                     'A N A N D A',
@@ -42,9 +40,24 @@ class MenuScreen extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
-                // ── sottotitolo ──
+                Center(
+                  child: Text(
+                    'Meditation, relax and focus app.\nPlease use HQ headphones for optimal results.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.30),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w300,
+                      letterSpacing: 0.5,
+                      height: 1.6,
+                    ),
+                  ),
+                ),
+
+                const Spacer(),
+
                 Center(
                   child: Text(
                     'S E L E C T   Y O U R   P A T H',
@@ -57,43 +70,58 @@ class MenuScreen extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 72),
+                const SizedBox(height: 24),
 
-                // ── card VOID ──
                 _MenuCard(
                   title: 'V O I D',
                   subtitle: 'Pure Tones',
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const VoidScreen(),
+                      PageRouteBuilder(
+                        transitionDuration: const Duration(milliseconds: 1200),
+                        pageBuilder: (_, __, ___) => const VoidScreen(),
+                        transitionsBuilder: (_, animation, __, child) {
+                          final curved = CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutQuart,
+                          );
+                          return ScaleTransition(
+                            scale: Tween<double>(
+                              begin: 0.1,
+                              end: 1.0,
+                            ).animate(curved),
+                            child: FadeTransition(
+                                opacity: Tween<double>(
+                                    begin: 0.0,
+                                    end: 1.0,
+                                ) .animate(curved),
+                              child: child,
+                            ),
+                          );
+                        },
                       ),
                     );
                   },
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
-                // ── card SAMSARA ──
                 _MenuCard(
                   title: 'S A M S A R A',
                   subtitle: 'Ambient Soundscapes',
-                  onTap: () {
-                    // pagina futura
-                  },
+                  onTap: () {},
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
-                // ── card SILENCE ──
                 _MenuCard(
                   title: 'S I L E N C E',
                   subtitle: 'Meditation Timer',
-                  onTap: () {
-                    // pagina futura
-                  },
+                  onTap: () {},
                 ),
+
+                const Spacer(),
               ],
             ),
           ),
@@ -103,10 +131,7 @@ class MenuScreen extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────
-//  CARD SINGOLA
-// ─────────────────────────────────────────────
-class _MenuCard extends StatelessWidget {
+class _MenuCard extends StatefulWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
@@ -118,17 +143,34 @@ class _MenuCard extends StatelessWidget {
   });
 
   @override
+  State<_MenuCard> createState() => _MenuCardState();
+}
+
+class _MenuCardState extends State<_MenuCard> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.06),
+          color: _pressed
+              ? Colors.white.withOpacity(0.12)
+              : Colors.white.withOpacity(0.06),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: Colors.white.withOpacity(0.08),
+            color: _pressed
+                ? Colors.white.withOpacity(0.20)
+                : Colors.white.withOpacity(0.08),
             width: 1,
           ),
         ),
@@ -136,7 +178,7 @@ class _MenuCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              title,
+              widget.title,
               style: const TextStyle(
                 color: Color(0xFFCCCCCC),
                 fontSize: 22,
@@ -146,7 +188,7 @@ class _MenuCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              subtitle,
+              widget.subtitle,
               style: TextStyle(
                 color: Colors.white.withOpacity(0.4),
                 fontSize: 13,

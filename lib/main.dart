@@ -26,6 +26,55 @@ class AnandaApp extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────
+//  TIMER RING PAINTER
+// ─────────────────────────────────────────────
+class TimerRingPainter extends CustomPainter {
+  final double progress; // 0.0 = inizio, 1.0 = fine
+  final bool isPlaying;
+
+  TimerRingPainter({required this.progress, required this.isPlaying});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final radius = (size.width / 2) - 6;
+
+    // cerchio base grigio scuro
+    final bgPaint = Paint()
+      ..color = Colors.white.withOpacity(0.08)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawCircle(Offset(cx, cy), radius, bgPaint);
+
+    if (!isPlaying && progress == 0.0) return;
+
+    // arco bianco che avanza
+    final fgPaint = Paint()
+      ..color = Colors.white.withOpacity(0.25)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+
+    final sweepAngle = 2 * pi * progress;
+
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(cx, cy), radius: radius),
+      -pi / 2,      // parte dall'alto
+      sweepAngle,
+      false,
+      fgPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(TimerRingPainter old) =>
+      old.progress != progress || old.isPlaying != isPlaying;
+}
+
+// ─────────────────────────────────────────────
 //  VECTORSCOPE PAINTER
 // ─────────────────────────────────────────────
 class VectorscopePainter extends CustomPainter {
@@ -35,42 +84,42 @@ class VectorscopePainter extends CustomPainter {
   VectorscopePainter({required this.t, required this.isPlaying});
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final r = size.width * 0.42;
+void paint(Canvas canvas, Size size) {
+  final cx = size.width / 2;
+  final cy = size.height / 2;
+  final r = size.width * 0.32;
 
-    const steps = 300;
-    const freqA = 2.0;
-    const freqB = 3.0;
+  const steps = 400;
+  final speed = t * 2 * pi;
 
-    final passes = [
-      (width: 6.0, opacity: 0.08),
-      (width: 2.5, opacity: 0.35),
-      (width: 1.0, opacity: 0.9),
-    ];
+  final passes = [
+    (width: 6.0, opacity: 0.06),
+    (width: 2.5, opacity: 0.30),
+    (width: 1.0, opacity: 0.95),
+  ];
 
-    for (final pass in passes) {
-      final paint = Paint()
-        ..color = Color.fromRGBO(30, 200, 80, pass.opacity)
-        ..strokeWidth = pass.width
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round;
+  for (final pass in passes) {
+    final paint = Paint()
+      ..color = Color.fromRGBO(30, 200, 80, pass.opacity)
+      ..strokeWidth = pass.width
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
 
-      final path = Path();
-      for (int i = 0; i <= steps; i++) {
-        final angle = (i / steps) * 2 * pi;
-        final x = cx + r * sin(freqA * angle + t * 2 * pi);
-        final y = cy + r * sin(freqB * angle + t * 2 * pi * 0.7);
-        if (i == 0) {
-          path.moveTo(x, y);
-        } else {
-          path.lineTo(x, y);
-        }
+    final path = Path();
+    for (int i = 0; i <= steps; i++) {
+      final angle = (i / steps) * 2 * pi;
+      final x = cx + r * sin(2 * angle + speed);
+      final y = cy + r * sin(3 * angle);  // Y statico — solo X ruota
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
       }
-      canvas.drawPath(path, paint);
     }
+    canvas.drawPath(path, paint);
   }
+}
 
   @override
   bool shouldRepaint(VectorscopePainter old) =>

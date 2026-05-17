@@ -50,7 +50,7 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
     _remainingSeconds = _selectedMinutes * 60;
     _lissajousController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 6),
+      duration: const Duration(seconds: 30),
     );
     _tickController = AnimationController(
       vsync: this,
@@ -162,6 +162,14 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
     });
   }
 
+  void _closeScreen() {
+    _player.stop();
+    _bellPlayer.stop();
+    _lissajousController.stop();
+    _tickController.stop();
+    Navigator.pop(context);
+  }
+
   String _formatTime(int totalSeconds) {
     final m = totalSeconds ~/ 60;
     final s = totalSeconds % 60;
@@ -179,6 +187,12 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final totalSeconds = _selectedMinutes * 60;
+    final elapsed = totalSeconds - _remainingSeconds;
+    final progress = totalSeconds > 0
+        ? (elapsed / totalSeconds).clamp(0.0, 1.0)
+        : 0.0;
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -243,12 +257,26 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                                 Expanded(
                                   child: AnimatedBuilder(
                                     animation: _lissajousController,
-                                    builder: (_, __) => CustomPaint(
-                                      painter: VectorscopePainter(
-                                        t: _lissajousController.value,
-                                        isPlaying: _isPlaying,
-                                      ),
-                                      child: const SizedBox.expand(),
+                                    builder: (_, __) => Stack(
+                                      children: [
+                                        CustomPaint(
+                                          painter: TimerRingPainter(
+                                            progress: progress,
+                                            isPlaying: _isPlaying,
+                                          ),
+                                          child: const SizedBox.expand(),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.all(20),
+                                          child: CustomPaint(
+                                            painter: VectorscopePainter(
+                                              t: _lissajousController.value,
+                                              isPlaying: _isPlaying,
+                                            ),
+                                            child: const SizedBox.expand(),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
@@ -296,7 +324,8 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                                             horizontal: 16),
                                         decoration: BoxDecoration(
                                           color: Colors.white.withOpacity(0.09),
-                                          borderRadius: BorderRadius.circular(14),
+                                          borderRadius:
+                                              BorderRadius.circular(14),
                                           border: Border.all(
                                             color: Colors.white.withOpacity(0.12),
                                             width: 1,
@@ -332,7 +361,8 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                                         height: 48,
                                         decoration: BoxDecoration(
                                           color: Colors.white.withOpacity(0.09),
-                                          borderRadius: BorderRadius.circular(14),
+                                          borderRadius:
+                                              BorderRadius.circular(14),
                                           border: Border.all(
                                             color: Colors.white.withOpacity(0.12),
                                             width: 1,
@@ -363,6 +393,33 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                     const SizedBox(height: 32),
                   ],
                 ),
+
+                // ── bottone X ──
+                Positioned(
+                  top: 80,
+                  left: 45,
+                  child: GestureDetector(
+                    onTap: _closeScreen,
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.08),
+                          width: 1,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.close,
+                        color: Colors.white.withOpacity(0.55),
+                        size: 16,
+                      ),
+                    ),
+                  ),
+                ),
+
                 if (_showDurationPicker)
                   Positioned(
                     bottom: 100,

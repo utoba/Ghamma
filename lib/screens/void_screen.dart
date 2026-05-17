@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
-import '../main.dart'; // VectorscopePainter
+import '../main.dart';
 
 class VoidScreen extends StatefulWidget {
   const VoidScreen({super.key});
@@ -13,7 +13,6 @@ class VoidScreen extends StatefulWidget {
 
 class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
 
-  // ── Audio ──
   final AudioPlayer _player = AudioPlayer();
   final AudioPlayer _bellPlayer = AudioPlayer();
 
@@ -27,36 +26,32 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
   ];
 
   static const String _bellUrl =
-      'https://www.eoni.cloud/ANANDA/AUDIO/BELL/bell_ananda1.aac';
+      'https://www.eoni.cloud/ANANDA/AUDIO/BELL/bell_ananda1.mp3';
 
-  // ── Animazioni ──
   late AnimationController _lissajousController;
   late AnimationController _tickController;
 
-  // ── Stato ──
   bool _isPlaying = false;
+  bool _isLoading = false;
   int _selectedMinutes = 20;
   late int _remainingSeconds;
   bool _showDurationPicker = false;
   bool _isFadingOut = false;
 
+  static const int _fadeOutSeconds = 20;
+
   final List<int> _minuteOptions = [
     5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60
   ];
-
-  // fade out: 30 secondi prima della fine
-  static const int _fadeOutSeconds = 20;
 
   @override
   void initState() {
     super.initState();
     _remainingSeconds = _selectedMinutes * 60;
-
     _lissajousController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 6),
     );
-
     _tickController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 1),
@@ -64,32 +59,24 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
     _tickController.addStatusListener(_onTick);
   }
 
-  // ── Tick del countdown ──
   void _onTick(AnimationStatus status) {
-  if (!_isPlaying) return;
-  if (status == AnimationStatus.completed) {
-    setState(() {
-      if (_remainingSeconds > 0) _remainingSeconds--;
-    });
-
-    // bell 5 secondi prima dell'inizio del fade out
-    if (_remainingSeconds == _fadeOutSeconds && !_isFadingOut) {
-      _playBell();
+    if (!_isPlaying) return;
+    if (status == AnimationStatus.completed) {
+      setState(() {
+        if (_remainingSeconds > 0) _remainingSeconds--;
+      });
+      if (_remainingSeconds == _fadeOutSeconds - 10 && !_isFadingOut) {
+        _playBell();
+      }
+      if (_remainingSeconds == _fadeOutSeconds && !_isFadingOut) {
+        _startFadeOut();
+        return;
+      }
+      if (_remainingSeconds <= 0) return;
+      _tickController.forward(from: 0);
     }
-
-    // avvia fade out
-    if (_remainingSeconds == _fadeOutSeconds && !_isFadingOut) {
-      _startFadeOut();
-      return;
-    }
-
-    if (_remainingSeconds <= 0) return;
-
-    _tickController.forward(from: 0);
   }
-}
 
-  // ── Avvia playlist random ──
   Future<void> _startAudio() async {
     final tracks = List<String>.from(_voidTracks)..shuffle(Random());
     final playlist = ConcatenatingAudioSource(
@@ -103,22 +90,22 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
     await _player.play();
   }
 
-  // ── Fade out volume ──
+  Future<void> _playBell() async {
+    await _bellPlayer.setUrl(_bellUrl);
+    await _bellPlayer.play();
+  }
+
   void _startFadeOut() {
     _isFadingOut = true;
     const totalSteps = _fadeOutSeconds;
     int step = 0;
-
     Timer.periodic(const Duration(seconds: 1), (timer) {
       step++;
       final volume = 1.0 - (step / totalSteps);
       _player.setVolume(volume.clamp(0.0, 1.0));
-
-      // aggiorna countdown anche durante il fade
       setState(() {
         if (_remainingSeconds > 0) _remainingSeconds--;
       });
-
       if (step >= totalSteps) {
         timer.cancel();
         _endSession();
@@ -126,60 +113,53 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
     });
   }
 
-  // ── Fine sessione ──
-Future<void> _endSession() async {
-  await _player.stop();
-  _lissajousController.stop();
-  setState(() {
-    _isPlaying = false;
-    _isFadingOut = false;
-    _remainingSeconds = 0;
-  });
-}
-
-  // ── Suona la campana ──
-  Future<void> _playBell() async {
-    await _bellPlayer.setUrl(_bellUrl);
-    await _bellPlayer.play();
-  }
-
-  // ── Toggle play/stop ──
-void _togglePlay() {
-  if (_isPlaying) {
-    _player.stop();
+  Future<void> _endSession() async {
+    await _player.stop();
     _lissajousController.stop();
-    _tickController.stop();
     setState(() {
       _isPlaying = false;
       _isFadingOut = false;
-      _remainingSeconds = _selectedMinutes * 60;
+      _remainingSeconds = 0;
     });
-    _player.setVolume(1.0);
-  } else {
-    if (_remainingSeconds <= 0) {
-      setState(() => _remainingSeconds = _selectedMinutes * 60);
-    }
-    setState(() => _isPlaying = true);
-    _lissajousController.repeat();
-    _tickController.forward(from: 0);
-    _playBell();    // parte subito
-    _startAudio();  // parte subito in parallelo
   }
-}
 
-  // ── Selezione durata ──
+  void _togglePlay() {
+    if (_isPlaying) {
+      _player.stop();
+      _lissajousController.stop();
+      _tickController.stop();
+      setState(() {
+        _isPlaying = false;
+        _isFadingOut = false;
+        _isLoading = false;
+        _remainingSeconds = _selectedMinutes * 60;
+      });
+      _player.setVolume(1.0);
+    } else {
+      if (_remainingSeconds <= 0) {
+        setState(() => _remainingSeconds = _selectedMinutes * 60);
+      }
+      setState(() => _isPlaying = true);
+      _lissajousController.repeat();
+      _tickController.forward(from: 0);
+      _playBell();
+      _startAudio();
+    }
+  }
+
   void _setDuration(int minutes) {
+    _player.stop();
+    _player.setVolume(1.0);
+    _lissajousController.stop();
+    _tickController.stop();
     setState(() {
       _selectedMinutes = minutes;
       _remainingSeconds = minutes * 60;
       _showDurationPicker = false;
       _isPlaying = false;
       _isFadingOut = false;
+      _isLoading = false;
     });
-    _player.stop();
-    _player.setVolume(1.0);
-    _lissajousController.stop();
-    _tickController.stop();
   }
 
   String _formatTime(int totalSeconds) {
@@ -225,8 +205,6 @@ void _togglePlay() {
                 Column(
                   children: [
                     const SizedBox(height: 24),
-
-                    // ── indicatori pagina ──
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(3, (i) {
@@ -245,10 +223,7 @@ void _togglePlay() {
                         );
                       }),
                     ),
-
                     const SizedBox(height: 32),
-
-                    // ── card principale ──
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -265,7 +240,6 @@ void _togglePlay() {
                             padding: const EdgeInsets.all(24),
                             child: Column(
                               children: [
-                                // ── vectorscope ──
                                 Expanded(
                                   child: AnimatedBuilder(
                                     animation: _lissajousController,
@@ -278,10 +252,7 @@ void _togglePlay() {
                                     ),
                                   ),
                                 ),
-
                                 const SizedBox(height: 16),
-
-                                // ── titolo ──
                                 Text(
                                   'VOID',
                                   style: TextStyle(
@@ -301,10 +272,7 @@ void _togglePlay() {
                                     fontWeight: FontWeight.w300,
                                   ),
                                 ),
-
                                 const SizedBox(height: 24),
-
-                                // ── timer ──
                                 Text(
                                   _formatTime(_remainingSeconds),
                                   style: const TextStyle(
@@ -314,14 +282,10 @@ void _togglePlay() {
                                     letterSpacing: 6,
                                   ),
                                 ),
-
                                 const SizedBox(height: 24),
-
-                                // ── bottoni ──
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    // selettore durata
                                     GestureDetector(
                                       onTap: () => setState(() =>
                                           _showDurationPicker =
@@ -331,13 +295,10 @@ void _togglePlay() {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 16),
                                         decoration: BoxDecoration(
-                                          color:
-                                              Colors.white.withOpacity(0.09),
-                                          borderRadius:
-                                              BorderRadius.circular(14),
+                                          color: Colors.white.withOpacity(0.09),
+                                          borderRadius: BorderRadius.circular(14),
                                           border: Border.all(
-                                            color: Colors.white
-                                                .withOpacity(0.12),
+                                            color: Colors.white.withOpacity(0.12),
                                             width: 1,
                                           ),
                                         ),
@@ -346,16 +307,14 @@ void _togglePlay() {
                                           children: [
                                             Icon(
                                               Icons.timer_outlined,
-                                              color: Colors.white
-                                                  .withOpacity(0.65),
+                                              color: Colors.white.withOpacity(0.65),
                                               size: 18,
                                             ),
                                             const SizedBox(width: 8),
                                             Text(
                                               '$_selectedMinutes min',
                                               style: TextStyle(
-                                                color: Colors.white
-                                                    .withOpacity(0.65),
+                                                color: Colors.white.withOpacity(0.65),
                                                 fontSize: 14,
                                                 letterSpacing: 1.2,
                                                 fontWeight: FontWeight.w300,
@@ -365,23 +324,17 @@ void _togglePlay() {
                                         ),
                                       ),
                                     ),
-
                                     const SizedBox(width: 20),
-
-                                    // START / STOP
                                     GestureDetector(
                                       onTap: _togglePlay,
                                       child: Container(
                                         width: 72,
                                         height: 48,
                                         decoration: BoxDecoration(
-                                          color:
-                                              Colors.white.withOpacity(0.09),
-                                          borderRadius:
-                                              BorderRadius.circular(14),
+                                          color: Colors.white.withOpacity(0.09),
+                                          borderRadius: BorderRadius.circular(14),
                                           border: Border.all(
-                                            color: Colors.white
-                                                .withOpacity(0.12),
+                                            color: Colors.white.withOpacity(0.12),
                                             width: 1,
                                           ),
                                         ),
@@ -389,8 +342,7 @@ void _togglePlay() {
                                           child: Text(
                                             _isPlaying ? 'STOP' : 'START',
                                             style: TextStyle(
-                                              color: Colors.white
-                                                  .withOpacity(0.75),
+                                              color: Colors.white.withOpacity(0.75),
                                               fontSize: 12,
                                               letterSpacing: 2.5,
                                               fontWeight: FontWeight.w400,
@@ -401,7 +353,6 @@ void _togglePlay() {
                                     ),
                                   ],
                                 ),
-
                                 const SizedBox(height: 8),
                               ],
                             ),
@@ -409,12 +360,9 @@ void _togglePlay() {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 32),
                   ],
                 ),
-
-                // ── duration picker ──
                 if (_showDurationPicker)
                   Positioned(
                     bottom: 100,
@@ -459,8 +407,7 @@ void _togglePlay() {
                                   borderRadius: BorderRadius.circular(10),
                                   border: Border.all(
                                     color: isSelected
-                                        ? const Color.fromRGBO(
-                                            30, 200, 80, 0.55)
+                                        ? const Color.fromRGBO(30, 200, 80, 0.55)
                                         : Colors.white.withOpacity(0.08),
                                     width: 1,
                                   ),

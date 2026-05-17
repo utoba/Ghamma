@@ -65,9 +65,6 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
       setState(() {
         if (_remainingSeconds > 0) _remainingSeconds--;
       });
-      if (_remainingSeconds == _fadeOutSeconds - 10 && !_isFadingOut) {
-        _playBell();
-      }
       if (_remainingSeconds == _fadeOutSeconds && !_isFadingOut) {
         _startFadeOut();
         return;
@@ -106,6 +103,11 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
       setState(() {
         if (_remainingSeconds > 0) _remainingSeconds--;
       });
+
+      if (step == totalSteps - 10) {
+      _playBell();
+    }
+
       if (step >= totalSteps) {
         timer.cancel();
         _endSession();

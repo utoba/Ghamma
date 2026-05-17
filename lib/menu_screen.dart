@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'main.dart'; // importa PlayerScreen (void page)
+import 'screens/void_screen.dart'; // importa PlayerScreen (void page)
 
 class MenuScreen extends StatelessWidget {
   const MenuScreen({super.key});
@@ -67,7 +67,7 @@ class MenuScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const PlayerScreen(),
+                        builder: (_) => const VoidScreen(),
                       ),
                     );
                   },

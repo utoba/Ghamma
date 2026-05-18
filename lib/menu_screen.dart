@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/void_screen.dart';
+import 'screens/samsara_screen.dart';
 
 class MenuScreen extends StatelessWidget {
   const MenuScreen({super.key});
@@ -26,29 +27,35 @@ class MenuScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 64),
+                const SizedBox(height: 30),
 
                 const Center(
                   child: Text(
                     'A N A N D A',
                     style: TextStyle(
                       color: Color(0xFFCCCCCC),
-                      fontSize: 32,
+                      fontSize: 37,
                       fontWeight: FontWeight.w200,
                       letterSpacing: 12,
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 16),
+                Container(
+                  height: 1,
+                  margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 16),
+                  color: Colors.white.withOpacity(0.1),
+                ),
+
+                const SizedBox(height: 8),
 
                 Center(
                   child: Text(
-                    'Meditation, relax and focus app.\nPlease use HQ headphones for optimal results.',
+                    'Sound and silence as a tool for the mind.\nVoid and Samsara are best experienced with high-quality headphones.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.30),
-                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.55),
+                      fontSize: 15,
                       fontWeight: FontWeight.w300,
                       letterSpacing: 0.5,
                       height: 1.6,
@@ -56,21 +63,27 @@ class MenuScreen extends StatelessWidget {
                   ),
                 ),
 
-                const Spacer(),
+                 Container(
+                  height: 1,
+                  margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 30),
+                  color: Colors.white.withOpacity(0.1),
+                ),
+
+                const Spacer(flex: 2),
 
                 Center(
                   child: Text(
                     'S E L E C T   Y O U R   P A T H',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.35),
-                      fontSize: 11,
+                      color: Colors.white.withOpacity(0.75),
+                      fontSize: 15,
                       fontWeight: FontWeight.w300,
                       letterSpacing: 4,
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 30),
 
                 _MenuCard(
                   title: 'V O I D',
@@ -110,7 +123,28 @@ class MenuScreen extends StatelessWidget {
                 _MenuCard(
                   title: 'S A M S A R A',
                   subtitle: 'Ambient Soundscapes',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        transitionDuration: const Duration(milliseconds: 1200),
+                        pageBuilder: (_, __, ___) => const SamsaraScreen(),
+                        transitionsBuilder: (_, animation, __, child) {
+                          final curved = CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutQuart,
+                          );
+                          return ScaleTransition(
+                            scale: Tween<double>(begin: 0.1, end: 1.0).animate(curved),
+                            child: FadeTransition(
+                              opacity: Tween<double>(begin: 0.0, end: 1.0).animate(curved),
+                              child: child,
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
                 ),
 
                 const SizedBox(height: 16),
@@ -121,7 +155,7 @@ class MenuScreen extends StatelessWidget {
                   onTap: () {},
                 ),
 
-                const Spacer(),
+                const Spacer(flex: 30),
               ],
             ),
           ),
@@ -181,7 +215,7 @@ class _MenuCardState extends State<_MenuCard> {
               widget.title,
               style: const TextStyle(
                 color: Color(0xFFCCCCCC),
-                fontSize: 22,
+                fontSize: 25,
                 fontWeight: FontWeight.w200,
                 letterSpacing: 6,
               ),
@@ -191,7 +225,7 @@ class _MenuCardState extends State<_MenuCard> {
               widget.subtitle,
               style: TextStyle(
                 color: Colors.white.withOpacity(0.4),
-                fontSize: 13,
+                fontSize: 15,
                 fontWeight: FontWeight.w300,
                 letterSpacing: 2,
               ),

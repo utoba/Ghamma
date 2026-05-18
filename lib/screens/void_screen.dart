@@ -2,7 +2,11 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import '../main.dart';
+import 'info_screen.dart';
+import 'package:http/http.dart' as http;
 
 class VoidScreen extends StatefulWidget {
   const VoidScreen({super.key});
@@ -29,14 +33,17 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
       'https://www.eoni.cloud/ANANDA/AUDIO/BELL/bell_ananda1.mp3';
 
   late AnimationController _lissajousController;
-  late AnimationController _tickController;
 
   bool _isPlaying = false;
-  bool _isLoading = false;
   int _selectedMinutes = 20;
-  late int _remainingSeconds;
+  int _remainingSeconds = 0;
   bool _showDurationPicker = false;
   bool _isFadingOut = false;
+
+  // ── Timer basato su DateTime reale ──
+  DateTime? _sessionStartTime;
+  int _totalSeconds = 0;
+  Timer? _ticker;
 
   static const int _fadeOutSeconds = 20;
 
@@ -48,44 +55,105 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _remainingSeconds = _selectedMinutes * 60;
+    _totalSeconds = _selectedMinutes * 60;
+
     _lissajousController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 30),
     );
-    _tickController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1),
-    );
-    _tickController.addStatusListener(_onTick);
+
+    _initForegroundTask();
   }
 
-  void _onTick(AnimationStatus status) {
-    if (!_isPlaying) return;
-    if (status == AnimationStatus.completed) {
-      setState(() {
-        if (_remainingSeconds > 0) _remainingSeconds--;
-      });
-      if (_remainingSeconds == _fadeOutSeconds && !_isFadingOut) {
+  // ── Setup foreground service ──
+  void _initForegroundTask() {
+    FlutterForegroundTask.init(
+      androidNotificationOptions: AndroidNotificationOptions(
+        channelId: 'ananda_meditation',
+        channelName: 'Ananda Meditation',
+        channelDescription: 'Keeps audio running during meditation',
+        channelImportance: NotificationChannelImportance.LOW,
+        priority: NotificationPriority.LOW,
+
+      ),
+      iosNotificationOptions: const IOSNotificationOptions(
+        showNotification: false,
+        playSound: false,
+      ),
+      foregroundTaskOptions: ForegroundTaskOptions(
+        eventAction: ForegroundTaskEventAction.repeat(5000),
+        autoRunOnBoot: false,
+        allowWifiLock: true,
+      ),
+    );
+  }
+
+  Future<void> _startForegroundTask() async {
+    if (await FlutterForegroundTask.isRunningService) return;
+    await FlutterForegroundTask.startService(
+      serviceId: 256,
+      notificationTitle: 'Ananda — meditazione attiva',
+      notificationText: 'Tocca per tornare alla sessione',
+    );
+  }
+
+  Future<void> _stopForegroundTask() async {
+    await FlutterForegroundTask.stopService();
+  }
+
+  // ── Timer reale basato su DateTime ──
+  void _startRealTimer() {
+    _sessionStartTime = DateTime.now();
+    _totalSeconds = _selectedMinutes * 60;
+    _ticker?.cancel();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!_isPlaying) return;
+      final elapsed = DateTime.now().difference(_sessionStartTime!).inSeconds;
+      final remaining = (_totalSeconds - elapsed).clamp(0, _totalSeconds);
+      setState(() => _remainingSeconds = remaining);
+
+      // ── aggiorna la notifica sul lock screen ogni secondo ──
+    FlutterForegroundTask.updateService(
+      notificationTitle: 'Ananda',
+      notificationText: _formatTime(remaining),
+    );
+
+      if (remaining == _fadeOutSeconds && !_isFadingOut) {
         _startFadeOut();
-        return;
       }
-      if (_remainingSeconds <= 0) return;
-      _tickController.forward(from: 0);
-    }
+      if (remaining <= 0 && !_isFadingOut) {
+        _endSession();
+      }
+    });
   }
 
-  Future<void> _startAudio() async {
-    final tracks = List<String>.from(_voidTracks)..shuffle(Random());
-    final playlist = ConcatenatingAudioSource(
-      children: tracks
-          .map((url) => AudioSource.uri(Uri.parse(url)))
-          .toList(),
-    );
-    await _player.setAudioSource(playlist);
-    await _player.setLoopMode(LoopMode.all);
-    await _player.setVolume(1.0);
-    await _player.play();
-  }
+ Future<List<String>> _fetchTracks(String folderUrl) async {
+  final response = await http.get(Uri.parse(folderUrl));
+  if (response.statusCode != 200) return [];
+  final body = response.body;
+  final regExp = RegExp(r'href="([^"]+\.mp3)"', caseSensitive: false);
+  final matches = regExp.allMatches(body);
+  return matches
+      .map((m) => folderUrl + m.group(1)!)
+      .toList();
+}
+
+Future<void> _startAudio() async {
+  final tracks = await _fetchTracks(
+    'https://www.eoni.cloud/ANANDA/AUDIO/VOID/',
+  );
+  if (tracks.isEmpty) return;
+  tracks.shuffle(Random());
+  final playlist = ConcatenatingAudioSource(
+    children: tracks
+        .map((url) => AudioSource.uri(Uri.parse(url)))
+        .toList(),
+  );
+  await _player.setAudioSource(playlist);
+  await _player.setLoopMode(LoopMode.all);
+  await _player.setVolume(1.0);
+  await _player.play();
+}
 
   Future<void> _playBell() async {
     await _bellPlayer.setUrl(_bellUrl);
@@ -100,14 +168,9 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
       step++;
       final volume = 1.0 - (step / totalSteps);
       _player.setVolume(volume.clamp(0.0, 1.0));
-      setState(() {
-        if (_remainingSeconds > 0) _remainingSeconds--;
-      });
-
       if (step == totalSteps - 10) {
-      _playBell();
-    }
-
+        _playBell();
+      }
       if (step >= totalSteps) {
         timer.cancel();
         _endSession();
@@ -116,7 +179,10 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _endSession() async {
+    _ticker?.cancel();
     await _player.stop();
+    await _stopForegroundTask();
+    WakelockPlus.disable();
     _lissajousController.stop();
     setState(() {
       _isPlaying = false;
@@ -127,48 +193,57 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
 
   void _togglePlay() {
     if (_isPlaying) {
+      // ── STOP ──
+      _ticker?.cancel();
       _player.stop();
+      _player.setVolume(1.0);
       _lissajousController.stop();
-      _tickController.stop();
+      _stopForegroundTask();
+      WakelockPlus.disable();
       setState(() {
         _isPlaying = false;
         _isFadingOut = false;
-        _isLoading = false;
         _remainingSeconds = _selectedMinutes * 60;
       });
-      _player.setVolume(1.0);
     } else {
-      if (_remainingSeconds <= 0) {
-        setState(() => _remainingSeconds = _selectedMinutes * 60);
-      }
-      setState(() => _isPlaying = true);
+      // ── START ──
+      setState(() {
+        _isPlaying = true;
+        _remainingSeconds = _selectedMinutes * 60;
+      });
       _lissajousController.repeat();
-      _tickController.forward(from: 0);
+      WakelockPlus.enable();
+      _startForegroundTask();
       _playBell();
       _startAudio();
+      _startRealTimer();
     }
   }
 
   void _setDuration(int minutes) {
+    _ticker?.cancel();
     _player.stop();
     _player.setVolume(1.0);
     _lissajousController.stop();
-    _tickController.stop();
+    _stopForegroundTask();
+    WakelockPlus.disable();
     setState(() {
       _selectedMinutes = minutes;
       _remainingSeconds = minutes * 60;
+      _totalSeconds = minutes * 60;
       _showDurationPicker = false;
       _isPlaying = false;
       _isFadingOut = false;
-      _isLoading = false;
     });
   }
 
   void _closeScreen() {
+    _ticker?.cancel();
     _player.stop();
     _bellPlayer.stop();
     _lissajousController.stop();
-    _tickController.stop();
+    _stopForegroundTask();
+    WakelockPlus.disable();
     Navigator.pop(context);
   }
 
@@ -180,22 +255,21 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _ticker?.cancel();
     _player.dispose();
     _bellPlayer.dispose();
     _lissajousController.dispose();
-    _tickController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final totalSeconds = _selectedMinutes * 60;
-    final elapsed = totalSeconds - _remainingSeconds;
-    final progress = totalSeconds > 0
-        ? (elapsed / totalSeconds).clamp(0.0, 1.0)
+    final progress = _totalSeconds > 0
+        ? ((_totalSeconds - _remainingSeconds) / _totalSeconds).clamp(0.0, 1.0)
         : 0.0;
-
-    return Scaffold(
+    return ScrollConfiguration(
+      behavior: const ScrollBehavior().copyWith(scrollbars: false),
+      child: Scaffold(   // ← Scaffold diventa "child" di ScrollConfiguration
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -220,29 +294,9 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
               children: [
                 Column(
                   children: [
-                    const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(3, (i) {
-                        final isActive = i == 1;
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          width: isActive ? 24 : 8,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: isActive
-                                ? const Color.fromRGBO(30, 200, 80, 0.9)
-                                : Colors.white.withOpacity(0.25),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 32),
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Container(
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.06),
@@ -294,15 +348,15 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  'Pure Tone',
+                                  'Pure Tones',
                                   style: TextStyle(
                                     color: Colors.white.withOpacity(0.35),
-                                    fontSize: 11,
+                                    fontSize: 15,
                                     letterSpacing: 3.5,
                                     fontWeight: FontWeight.w300,
                                   ),
                                 ),
-                                const SizedBox(height: 24),
+                                const SizedBox(height: 8),
                                 Text(
                                   _formatTime(_remainingSeconds),
                                   style: const TextStyle(
@@ -392,14 +446,13 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 8),
                   ],
                 ),
 
-                // ── bottone X ──
                 Positioned(
-                  top: 80,
-                  left: 45,
+                  top: 20,
+                  left: 35,
                   child: GestureDetector(
                     onTap: _closeScreen,
                     child: Container(
@@ -421,7 +474,49 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                     ),
                   ),
                 ),
-
+                Positioned(
+                  top: 20,
+                  right: 35,
+                  child: GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        transitionDuration: const Duration(milliseconds: 1200),
+                        pageBuilder: (_, __, ___) => const InfoScreen(),
+                        transitionsBuilder: (_, animation, __, child) {
+                          final curved = CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutQuart,
+                          );
+                          return ScaleTransition(
+                            scale: Tween<double>(begin: 0.1, end: 1.0).animate(curved),
+                            child: FadeTransition(
+                              opacity: Tween<double>(begin: 0.0, end: 1.0).animate(curved),
+                              child: child,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.08),
+                          width: 1,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.info_outline,
+                        color: Colors.white.withOpacity(0.55),
+                        size: 16,
+                      ),
+                    ),
+                  ),
+                ),
                 if (_showDurationPicker)
                   Positioned(
                     bottom: 100,
@@ -495,6 +590,7 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
             ),
           ),
         ),
+      ),
       ),
     );
   }

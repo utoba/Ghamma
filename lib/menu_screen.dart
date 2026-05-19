@@ -51,7 +51,7 @@ class MenuScreen extends StatelessWidget {
 
                 Center(
                   child: Text(
-                    'Sound and silence as a tool for the mind.\nVoid and Samsara are best experienced with high-quality headphones.',
+                    'Sound and silence as a tool for the mind.\nVoid is best experienced with high-quality headphones.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.55),

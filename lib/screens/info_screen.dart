@@ -52,13 +52,13 @@ class InfoScreen extends StatelessWidget {
                       'P U R E   T O N E S',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.55),
-                        fontSize: 15,
+                        fontSize: 20,
                         letterSpacing: 4,
                         fontWeight: FontWeight.w300,
                       ),
                     ),
                     const Spacer(),
-                    const SizedBox(width: 36),
+                    const SizedBox(width: 32),
                   ],
                 ),
               ),
@@ -84,7 +84,7 @@ class InfoScreen extends StatelessWidget {
                       ),
                       _divider(),
                       _paragraph(
-                        'I also remember that as a beginner, all the tools that helped me relax and focus — music above all — were essential in helping me move forward on my spiritual path.',
+                        'I also remember that as a beginner, all the tools that allowed me to relax and focus — music above all — were essential to my progress on the spiritual path.',
                       ),
                       _divider(),
                       _paragraph(

@@ -30,7 +30,6 @@ class _SamsaraScreenState extends State<SamsaraScreen>
   double _amplitude = 0.0;
   Timer? _fadeTicker;
 
-  // fase waveform animata con Ticker Flutter (smooth, no setState loop)
   late Ticker _waveTicker;
   double _wavePhase = 0.0;
   Duration _lastTick = Duration.zero;
@@ -43,7 +42,8 @@ class _SamsaraScreenState extends State<SamsaraScreen>
       if (!_isPlaying) return;
       final dt = elapsed - _lastTick;
       _lastTick = elapsed;
-      setState(() => _wavePhase += dt.inMilliseconds * 0.00008);
+      // velocità aumentata: 0.00008 → 0.00035
+      setState(() => _wavePhase += dt.inMilliseconds * 0.00035);
     });
 
     _player.currentIndexStream.listen((index) {
@@ -129,6 +129,7 @@ class _SamsaraScreenState extends State<SamsaraScreen>
       });
     } else {
       setState(() => _isPlaying = true);
+      _lastTick = Duration.zero;
       _waveTicker.start();
       WakelockPlus.enable();
       FlutterForegroundTask.startService(
@@ -194,7 +195,7 @@ class _SamsaraScreenState extends State<SamsaraScreen>
               ),
             ),
 
-            // ── background linee costellazione ingrandita ──
+            // ── background linee costellazione ──
             CustomPaint(
               painter: ConstellationBgPainter(),
               child: const SizedBox.expand(),
@@ -224,7 +225,7 @@ class _SamsaraScreenState extends State<SamsaraScreen>
                               child: Column(
                                 children: [
 
-                                  // ── cerchio con animazione dentro ──
+                                  // ── cerchio con barre radiali dentro ──
                                   Expanded(
                                     child: CustomPaint(
                                       painter: SamsaraCirclePainter(
@@ -268,7 +269,6 @@ class _SamsaraScreenState extends State<SamsaraScreen>
                                   ),
                                   const SizedBox(height: 24),
 
-                                  // ── controlli ──
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
@@ -324,16 +324,14 @@ class _SamsaraScreenState extends State<SamsaraScreen>
                   ),
 
                   Positioned(
-                    top: 20,
-                    left: 35,
+                    top: 20, left: 35,
                     child: GestureDetector(
                       onTap: _closeScreen,
                       child: _iconBtn(Icons.close),
                     ),
                   ),
                   Positioned(
-                    top: 20,
-                    right: 35,
+                    top: 20, right: 35,
                     child: GestureDetector(
                       onTap: () => Navigator.push(
                         context,
@@ -342,8 +340,7 @@ class _SamsaraScreenState extends State<SamsaraScreen>
                           pageBuilder: (_, __, ___) => const SamsaraInfoScreen(),
                           transitionsBuilder: (_, animation, __, child) {
                             final curved = CurvedAnimation(
-                              parent: animation,
-                              curve: Curves.easeOutQuart,
+                              parent: animation, curve: Curves.easeOutQuart,
                             );
                             return ScaleTransition(
                               scale: Tween<double>(begin: 0.1, end: 1.0).animate(curved),
@@ -389,21 +386,24 @@ class _SamsaraScreenState extends State<SamsaraScreen>
 }
 
 // ────────────────────────────────────────────────
-// Cerchio con waveform ambient dentro
+// Cerchio con barre radiali animate dentro
 // ────────────────────────────────────────────────
 class SamsaraCirclePainter extends CustomPainter {
   final double wavePhase;
   final double amplitude;
   final bool isPlaying;
 
+  // seed fisse per ogni barra — frequenze e fasi diverse
   static final List<Map<String, double>> _bars = List.generate(60, (i) {
     final rng = Random(i * 7 + 3);
     return {
-      'f1': 0.6 + rng.nextDouble() * 1.2,
-      'f2': 0.2 + rng.nextDouble() * 0.6,
+      'f1': 1.2 + rng.nextDouble() * 2.5,   // range più ampio
+      'f2': 0.5 + rng.nextDouble() * 1.5,
+      'f3': 0.3 + rng.nextDouble() * 0.8,   // terza componente per più varietà
       'p1': rng.nextDouble() * pi * 2,
       'p2': rng.nextDouble() * pi * 2,
-      'base': 0.04 + rng.nextDouble() * 0.08,
+      'p3': rng.nextDouble() * pi * 2,
+      'base': 0.05 + rng.nextDouble() * 0.06,
     };
   });
 
@@ -418,14 +418,16 @@ class SamsaraCirclePainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.shortestSide / 2) - 16;
 
-    // ── clip tutto dentro il cerchio ──
+    // clip dentro il cerchio
     canvas.save();
-    canvas.clipPath(Path()..addOval(Rect.fromCircle(center: center, radius: radius - 1)));
+    canvas.clipPath(
+      Path()..addOval(Rect.fromCircle(center: center, radius: radius - 1)),
+    );
 
-    // ── waveform a barre radiali dentro il cerchio ──
     final numBars = _bars.length;
-    final maxBarH = radius * 0.55;
-    final minBarH = radius * 0.02;
+    final maxBarH = radius * 0.62;  // barre più lunghe
+    final minBarH = radius * 0.03;
+    final innerR  = radius * 0.28;
 
     for (int i = 0; i < numBars; i++) {
       final s = _bars[i];
@@ -433,26 +435,27 @@ class SamsaraCirclePainter extends CustomPainter {
 
       double h;
       if (isPlaying && amplitude > 0) {
-        h = s['base']! +
-            sin(wavePhase * s['f1']! + s['p1']!) * 0.18 +
-            sin(wavePhase * s['f2']! + s['p2']!) * 0.08;
-        h = h.clamp(0.03, 1.0);
+        // tre componenti sinusoidali → movimento molto più vario
+        h = s['base']!
+          + sin(wavePhase * s['f1']! + s['p1']!) * 0.30
+          + sin(wavePhase * s['f2']! + s['p2']!) * 0.18
+          + sin(wavePhase * s['f3']! + s['p3']!) * 0.10;
+        h = h.clamp(0.02, 1.0);
         h = (minBarH + h * maxBarH) * amplitude;
       } else {
-        h = minBarH * 1.5;
+        h = minBarH * 1.2;
       }
 
-      final innerR = radius * 0.30;
       final outerR = innerR + h;
-
       final x1 = center.dx + cos(angle) * innerR;
       final y1 = center.dy + sin(angle) * innerR;
       final x2 = center.dx + cos(angle) * outerR;
       final y2 = center.dy + sin(angle) * outerR;
 
+      final normalizedH = h / maxBarH;
       final alpha = isPlaying
-          ? (0.15 + (h / maxBarH) * 0.5) * amplitude
-          : 0.06;
+          ? (0.20 + normalizedH * 0.65) * amplitude
+          : 0.07;
 
       final paint = Paint()
         ..color = Color.fromRGBO(30, 200, 80, alpha.clamp(0.0, 1.0))
@@ -465,7 +468,7 @@ class SamsaraCirclePainter extends CustomPainter {
 
     canvas.restore();
 
-    // ── cerchio outline sopra tutto ──
+    // cerchio outline sopra
     final ringPaint = Paint()
       ..color = Colors.white.withOpacity(0.10)
       ..style = PaintingStyle.stroke
@@ -481,84 +484,59 @@ class SamsaraCirclePainter extends CustomPainter {
 }
 
 // ────────────────────────────────────────────────
-// Background: zoom su Orione ingrandito
-// poche linee lunghe, quasi niente punti
+// Background: Orione ingrandito — poche linee visibili
 // ────────────────────────────────────────────────
 class ConstellationBgPainter extends CustomPainter {
 
-  // Orione ingrandito e spostato — come se fosse uno zoom
-  // coordinate normalizzate, occupano gran parte dello schermo
+  // 7 nodi principali di Orione, ingranditi su tutto lo schermo
   static const _nodes = [
-    (0.15, 0.18),  // 0 Betelgeuse (spalla sx)
-    (0.75, 0.12),  // 1 Bellatrix (spalla dx)
-    (0.10, 0.72),  // 2 Rigel (piede sx)
-    (0.80, 0.68),  // 3 Saiph (piede dx)
-    (0.28, 0.44),  // 4 Alnitak (cintura sx)
-    (0.50, 0.42),  // 5 Alnilam (cintura centro)
-    (0.72, 0.40),  // 6 Mintaka (cintura dx)
-    (0.45, 0.05),  // 7 Meissa (testa)
-    (0.20, 0.30),  // 8 spalla sx → cintura
-    (0.70, 0.26),  // 9 spalla dx → cintura
+    (0.10, 0.10),  // 0 Betelgeuse
+    (0.68, 0.13),  // 1 Bellatrix
+    (0.11, 0.38),  // 2 Rigel
+    (0.42, 0.32),  // 3 Saiph
+    (0.30, 0.48),  // 4 Alnitak
+    (0.50, 0.65),  // 5 Alnilam
+    (0.70, 0.53),  // 6 Mintaka
   ];
 
+  // solo 10 linee — le connessioni principali di Orione
   static const _lines = [
     [0, 1],  // spalle
-    [0, 2],  // spalla sx → piede sx
-    [1, 3],  // spalla dx → piede dx
+    [0, 2],  // Betelgeuse → Rigel
+    [1, 3],  // Bellatrix → Saiph
+    [2, 3],  // piedi
     [4, 5],  // cintura
     [5, 6],  // cintura
-    [0, 7],  // spalla sx → testa
-    [1, 7],  // spalla dx → testa
-    [0, 8],  // spalla sx → punto intermedio
-    [8, 4],  // → cintura sx
-    [1, 9],  // spalla dx → punto intermedio
-    [9, 6],  // → cintura dx
-  ];
-
-  // stelle piccole sparse extra (solo dot, no linee)
-  static const _extraDots = [
-    (0.35, 0.82), (0.60, 0.90), (0.88, 0.50),
-    (0.05, 0.55), (0.92, 0.22), (0.55, 0.60),
+    [0, 4],  // spalla sx → cintura
+    [1, 6],  // spalla dx → cintura
+    [0, 5],  // Betelgeuse → centro cintura
+    [1, 5],  // Bellatrix → centro cintura
   ];
 
   @override
   void paint(Canvas canvas, Size size) {
     final linePaint = Paint()
-      ..color = Colors.white.withOpacity(0.055)
-      ..strokeWidth = 0.6
+      ..color = Colors.white.withOpacity(0.07)  // molto più visibile
+      ..strokeWidth = 0.8
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
-    // dot principali — appena visibili
     final dotMain = Paint()
-      ..color = Colors.white.withOpacity(0.20)
-      ..style = PaintingStyle.fill;
-
-    // dot extra — ancora più tenui
-    final dotExtra = Paint()
-      ..color = Colors.white.withOpacity(0.09)
+      ..color = Colors.white.withOpacity(0.10)
       ..style = PaintingStyle.fill;
 
     Offset p(double x, double y) => Offset(x * size.width, y * size.height);
 
-    // linee
     for (final pair in _lines) {
       final a = _nodes[pair[0]];
       final b = _nodes[pair[1]];
       canvas.drawLine(p(a.$1, a.$2), p(b.$1, b.$2), linePaint);
     }
 
-    // dot principali solo sulle stelle vere di Orione (0-6)
-    for (int i = 0; i <= 6; i++) {
-      final nd = _nodes[i];
-      // stelle della cintura più piccole
-      final r = (i >= 4 && i <= 6) ? 1.2 : 2.0;
-      canvas.drawCircle(p(nd.$1, nd.$2), r, dotMain);
-    }
-
-    // dot extra sparsi
-    for (final d in _extraDots) {
-      canvas.drawCircle(p(d.$1, d.$2), 0.9, dotExtra);
+    // solo i 7 nodi principali, dimensioni diverse per magnitudine
+    final radii = [2.8, 2.2, 2.8, 2.2, 1.6, 2.0, 1.6];
+    for (int i = 0; i < _nodes.length; i++) {
+      canvas.drawCircle(p(_nodes[i].$1, _nodes[i].$2), radii[i], dotMain);
     }
   }
 

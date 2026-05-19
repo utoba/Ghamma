@@ -129,7 +129,6 @@ void paint(Canvas canvas, Size size) {
 // Stelle
 class StarfieldPainter extends CustomPainter {
   final double t;
-
   StarfieldPainter({required this.t});
 
   static final List<_Star> _stars = _generateStars();
@@ -138,99 +137,99 @@ class StarfieldPainter extends CustomPainter {
     final rng = Random(42);
     final stars = <_Star>[];
 
-    // magnitude 1 — 8 stelle grandi
+    // magnitude 1 — 8 stelle grandi, concentrate nel 55% superiore
     for (int i = 0; i < 8; i++) {
       stars.add(_Star(
         x: rng.nextDouble(),
-        y: rng.nextDouble() * 0.85,
+        y: rng.nextDouble() * 0.68,
         r: 2.2,
         phase: rng.nextDouble() * pi * 2,
-        speed: 2.5 + rng.nextDouble() * 2.0,
+        speed: 1.2 + rng.nextDouble() * 1.0,  // più veloci
         color: [
           const Color(0xFFFFFFFF),
           const Color(0xFFFFE8C0),
           const Color(0xFFC8D8FF),
         ][rng.nextInt(3)],
-        minOpacity: 0.3,
-        maxOpacity: 0.95,
+        minOpacity: 0.05,   // minimo molto basso → contrasto alto
+        maxOpacity: 0.5,    // massimo pieno
       ));
     }
-    // magnitude 2 — 14 stelle medie
+    // magnitude 2 — 14 stelle medie, nel 65% superiore
     for (int i = 0; i < 14; i++) {
       stars.add(_Star(
         x: rng.nextDouble(),
-        y: rng.nextDouble() * 0.90,
+        y: rng.nextDouble() * 0.75,
         r: 1.5,
         phase: rng.nextDouble() * pi * 2,
-        speed: 3.5 + rng.nextDouble() * 3.0,
+        speed: 1.5 + rng.nextDouble() * 1.5,
         color: [
           const Color(0xFFFFFFFF),
           const Color(0xFFFFE8C0),
           const Color(0xFFC8D8FF),
         ][rng.nextInt(3)],
-        minOpacity: 0.15,
+        minOpacity: 0.03,
         maxOpacity: 0.75,
       ));
     }
-    // magnitude 3 — 20 stelle piccole
-    for (int i = 0; i < 20; i++) {
+    // magnitude 3 — 18 stelle piccole, nel 70% superiore
+    for (int i = 0; i < 18; i++) {
       stars.add(_Star(
         x: rng.nextDouble(),
-        y: rng.nextDouble() * 0.95,
+        y: rng.nextDouble() * 0.88,
         r: 1.0,
         phase: rng.nextDouble() * pi * 2,
-        speed: 4.0 + rng.nextDouble() * 4.0,
+        speed: 1.8 + rng.nextDouble() * 2.0,
         color: [
           const Color(0xFFFFFFFF),
           const Color(0xFFDDEEFF),
           const Color(0xFFFFE8C0),
         ][rng.nextInt(3)],
-        minOpacity: 0.10,
+        minOpacity: 0.02,
         maxOpacity: 0.55,
       ));
     }
-    // magnitude 4-5 — 35 stelle tenui
-    for (int i = 0; i < 35; i++) {
+    // magnitude 4-5 — 25 stelle tenui, nel 60% superiore
+    for (int i = 0; i < 25; i++) {
       stars.add(_Star(
         x: rng.nextDouble(),
-        y: rng.nextDouble(),
+        y: rng.nextDouble() * 0.80,
         r: 0.6,
         phase: rng.nextDouble() * pi * 2,
-        speed: 5.0 + rng.nextDouble() * 5.0,
+        speed: 2.0 + rng.nextDouble() * 2.5,
         color: const Color(0xFFAABBD4),
-        minOpacity: 0.08,
-        maxOpacity: 0.38,
+        minOpacity: 0.01,
+        maxOpacity: 0.35,
       ));
     }
 
-    // Orsa Maggiore — posizioni fisse normalizzate
+    // Orsa Maggiore — posizioni fisse nel terzo superiore
     final orsaMaggiore = [
-      (0.200, 0.225), (0.277, 0.208), (0.354, 0.199),
-      (0.410, 0.211), (0.397, 0.249), (0.226, 0.168), (0.172, 0.140),
+      (0.200, 0.205), (0.277, 0.188), (0.354, 0.179),
+      (0.410, 0.191), (0.397, 0.229), (0.226, 0.148), (0.172, 0.120),
     ];
     for (final pos in orsaMaggiore) {
       stars.add(_Star(
         x: pos.$1, y: pos.$2, r: 1.5,
         phase: rng.nextDouble() * pi * 2,
-        speed: 4.0 + rng.nextDouble() * 2.5,
+        speed: 1.5 + rng.nextDouble() * 1.0,
         color: const Color(0xFFFFFFFF),
-        minOpacity: 0.5, maxOpacity: 0.95,
+        minOpacity: 0.2, maxOpacity: 0.7,
         isConstellation: true,
       ));
     }
 
-    // Cassiopeia — W caratteristico
+    // Cassiopeia — in alto a destra
     final cassiopeia = [
-      (0.654, 0.136), (0.697, 0.116), (0.744, 0.133),
-      (0.790, 0.113), (0.833, 0.130),
+      (0.654, 0.116), (0.697, 0.096), (0.744, 0.113),
+      (0.790, 0.093), (0.833, 0.110),
     ];
     for (final pos in cassiopeia) {
       stars.add(_Star(
         x: pos.$1, y: pos.$2, r: 1.5,
         phase: rng.nextDouble() * pi * 2,
-        speed: 4.0 + rng.nextDouble() * 2.5,
+        speed: 1.5 + rng.nextDouble() * 1.0,
         color: const Color(0xFFFFFFFF),
-        minOpacity: 0.5, maxOpacity: 0.95,
+        minOpacity: 0.2, maxOpacity: 0.6,
         isConstellation: true,
       ));
     }
@@ -238,7 +237,6 @@ class StarfieldPainter extends CustomPainter {
     return stars;
   }
 
-  // linee costellazioni — indici nell'array stars (dopo le prime 77 random)
   static const List<List<int>> _orsaLines = [
     [0, 1], [1, 2], [2, 3], [3, 4], [4, 2], [1, 5], [5, 6]
   ];
@@ -248,12 +246,29 @@ class StarfieldPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final orsaOffset = 77;
-    final cassOffset = 77 + 7;
+    // ── alone blu scuro in alto ──
+    final blueGlow = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(0.0, -1.0),
+        radius: 1.0,
+        colors: [
+          const Color(0xFF1A3A6A).withOpacity(0.45),
+          const Color(0xFF0D1F3C).withOpacity(0.20),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.5, 1.0],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height * 0.7));
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height * 0.7),
+      blueGlow,
+    );
 
-    // disegna linee Orsa Maggiore
+    final orsaOffset = 65; // 8+14+18+25
+    final cassOffset = orsaOffset + 7;
+
+    // linee costellazioni
     final linePaint = Paint()
-      ..color = Colors.white.withOpacity(0.08)
+      ..color = Colors.white.withOpacity(0.10)
       ..strokeWidth = 0.5
       ..style = PaintingStyle.stroke;
 
@@ -276,13 +291,17 @@ class StarfieldPainter extends CustomPainter {
       );
     }
 
-    // disegna stelle
+    // stelle
     for (final star in _stars) {
+      // flickering più aggressivo: sin^2 per scatti netti
+      // DOPO
+      // PRIMA
+      final raw = sin(t * 80 * pi * (1 / star.speed) + star.phase);
+      final flicker = (raw * raw * raw).abs() > 0.3 ? raw * raw : 0.0;
       final opacity = star.minOpacity +
-          (star.maxOpacity - star.minOpacity) *
-              (0.5 + 0.5 * sin(t * 2 * pi * (1 / star.speed) + star.phase));
+          (star.maxOpacity - star.minOpacity) * ((flicker + 1.0) / 2.0);
       final paint = Paint()
-        ..color = star.color.withOpacity(opacity)
+        ..color = star.color.withOpacity(opacity.clamp(0.0, 1.0))
         ..style = PaintingStyle.fill;
       canvas.drawCircle(
         Offset(star.x * size.width, star.y * size.height),

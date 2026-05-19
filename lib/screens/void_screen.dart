@@ -65,7 +65,7 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
 
     _starController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 60),
+      duration: const Duration(seconds: 15),  // ← da 60 a 8
     )..repeat();
 
     _initForegroundTask();

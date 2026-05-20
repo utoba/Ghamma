@@ -43,7 +43,7 @@ class _SamsaraScreenState extends State<SamsaraScreen>
       final dt = elapsed - _lastTick;
       _lastTick = elapsed;
       // velocità aumentata: 0.00008 → 0.00035
-      setState(() => _wavePhase += dt.inMilliseconds * 0.00035);
+      setState(() => _wavePhase += dt.inMilliseconds * 0.00095);
     });
 
     _player.currentIndexStream.listen((index) {
@@ -207,7 +207,6 @@ class _SamsaraScreenState extends State<SamsaraScreen>
                 children: [
                   Column(
                     children: [
-                      const SizedBox(height: 8),
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -425,9 +424,9 @@ class SamsaraCirclePainter extends CustomPainter {
     );
 
     final numBars = _bars.length;
-    final maxBarH = radius * 0.62;  // barre più lunghe
+    final maxBarH = radius * 0.85;  // barre più lunghe
     final minBarH = radius * 0.03;
-    final innerR  = radius * 0.28;
+    final innerR  = radius * 0.18;
 
     for (int i = 0; i < numBars; i++) {
       final s = _bars[i];
@@ -437,9 +436,9 @@ class SamsaraCirclePainter extends CustomPainter {
       if (isPlaying && amplitude > 0) {
         // tre componenti sinusoidali → movimento molto più vario
         h = s['base']!
-          + sin(wavePhase * s['f1']! + s['p1']!) * 0.30
-          + sin(wavePhase * s['f2']! + s['p2']!) * 0.18
-          + sin(wavePhase * s['f3']! + s['p3']!) * 0.10;
+          + sin(wavePhase * s['f1']! + s['p1']!) * 0.52
+          + sin(wavePhase * s['f2']! + s['p2']!) * 0.30
+          + sin(wavePhase * s['f3']! + s['p3']!) * 0.14;
         h = h.clamp(0.02, 1.0);
         h = (minBarH + h * maxBarH) * amplitude;
       } else {
@@ -468,12 +467,6 @@ class SamsaraCirclePainter extends CustomPainter {
 
     canvas.restore();
 
-    // cerchio outline sopra
-    final ringPaint = Paint()
-      ..color = Colors.white.withOpacity(0.10)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    canvas.drawCircle(center, radius, ringPaint);
   }
 
   @override
@@ -484,62 +477,92 @@ class SamsaraCirclePainter extends CustomPainter {
 }
 
 // ────────────────────────────────────────────────
-// Background: Orione ingrandito — poche linee visibili
+// Background: 
 // ────────────────────────────────────────────────
 class ConstellationBgPainter extends CustomPainter {
 
-  // 7 nodi principali di Orione, ingranditi su tutto lo schermo
   static const _nodes = [
-    (0.10, 0.10),  // 0 Betelgeuse
-    (0.68, 0.13),  // 1 Bellatrix
-    (0.11, 0.38),  // 2 Rigel
-    (0.42, 0.32),  // 3 Saiph
-    (0.30, 0.48),  // 4 Alnitak
-    (0.50, 0.65),  // 5 Alnilam
-    (0.70, 0.53),  // 6 Mintaka
+    // originale (x, y) → ruotato 90° CW: (1-y, x)
+    (0.90, 0.10),  // 0 Betelgeuse
+    (0.87, 0.68),  // 1 Bellatrix
+    (0.62, 0.11),  // 2 Rigel
+    (0.68, 0.42),  // 3 Saiph
+    (0.52, 0.30),  // 4 Alnitak
+    (0.35, 0.50),  // 5 Alnilam
+    (0.47, 0.70),  // 6 Mintaka
+    // secondarie
+    (0.76, 0.82),  // 7
+    (0.29, 0.16),  // 8
+    (0.22, 0.84),  // 9
+    (0.14, 0.37),  // 10
+    (0.44, 0.05),  // 11
+    (0.62, 0.89),  // 12
+    (0.78, 0.53),  // 13
+    (0.79, 0.21),  // 14
+    (0.35, 0.87),  // 15
+    (0.93, 0.45),  // 16
+    (0.14, 0.76),  // 17
+    (0.12, 0.13),  // 18
   ];
 
-  // solo 10 linee — le connessioni principali di Orione
-  static const _lines = [
-    [0, 1],  // spalle
-    [0, 2],  // Betelgeuse → Rigel
-    [1, 3],  // Bellatrix → Saiph
-    [2, 3],  // piedi
-    [4, 5],  // cintura
-    [5, 6],  // cintura
-    [0, 4],  // spalla sx → cintura
-    [1, 6],  // spalla dx → cintura
-    [0, 5],  // Betelgeuse → centro cintura
-    [1, 5],  // Bellatrix → centro cintura
+  // Linee principali + secondarie
+  static const _linesMain = [
+    [0,1],[0,2],[1,3],[2,3],[4,5],[5,6],
+    [0,4],[1,6],[0,5],[1,5],
   ];
+  static const _linesSec = [
+    [0,6],[2,6],[2,5],[3,4],[3,6],
+    [7,1],[7,6],[8,4],[8,5],[9,6],[9,5],
+    [10,5],[10,8],[11,2],[11,4],[12,1],[12,6],
+    [13,3],[14,0],[15,9],[17,9],[18,10],[18,8],
+  ];
+
+  final double pulseValue; // 0.0 → 1.0, animato esternamente
+
+  const ConstellationBgPainter({this.pulseValue = 0.5});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final linePaint = Paint()
-      ..color = Colors.white.withOpacity(0.07)  // molto più visibile
-      ..strokeWidth = 0.8
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final dotMain = Paint()
-      ..color = Colors.white.withOpacity(0.10)
-      ..style = PaintingStyle.fill;
-
     Offset p(double x, double y) => Offset(x * size.width, y * size.height);
 
-    for (final pair in _lines) {
-      final a = _nodes[pair[0]];
-      final b = _nodes[pair[1]];
-      canvas.drawLine(p(a.$1, a.$2), p(b.$1, b.$2), linePaint);
+    // linee principali — pulsano tra 0.06 e 0.16
+    final mainAlpha = 0.06 + pulseValue * 0.10;
+    final linePaintMain = Paint()
+      ..color = Colors.white.withOpacity(mainAlpha)
+      ..strokeWidth = 0.8
+      ..strokeCap = StrokeCap.round;
+
+    for (final pair in _linesMain) {
+      final a = _nodes[pair[0]]; final b = _nodes[pair[1]];
+      canvas.drawLine(p(a.$1, a.$2), p(b.$1, b.$2), linePaintMain);
     }
 
-    // solo i 7 nodi principali, dimensioni diverse per magnitudine
-    final radii = [2.8, 2.2, 2.8, 2.2, 1.6, 2.0, 1.6];
-    for (int i = 0; i < _nodes.length; i++) {
-      canvas.drawCircle(p(_nodes[i].$1, _nodes[i].$2), radii[i], dotMain);
+    // linee secondarie — più sottili, fase invertita
+    final secAlpha = 0.04 + (1.0 - pulseValue) * 0.07;
+    final linePaintSec = Paint()
+      ..color = Colors.white.withOpacity(secAlpha)
+      ..strokeWidth = 0.5
+      ..strokeCap = StrokeCap.round;
+
+    for (final pair in _linesSec) {
+      final a = _nodes[pair[0]]; final b = _nodes[pair[1]];
+      canvas.drawLine(p(a.$1, a.$2), p(b.$1, b.$2), linePaintSec);
+    }
+
+    // nodi principali
+    final dotMain = Paint()..color = Colors.white.withOpacity(0.08 + pulseValue * 0.08)..style = PaintingStyle.fill;
+    final radiiMain = [2.8, 2.2, 2.8, 2.2, 1.6, 2.0, 1.6];
+    for (int i = 0; i < 7; i++) {
+      canvas.drawCircle(p(_nodes[i].$1, _nodes[i].$2), radiiMain[i], dotMain);
+    }
+
+    // nodi secondari
+    final dotSec = Paint()..color = Colors.white.withOpacity(0.05 + pulseValue * 0.05)..style = PaintingStyle.fill;
+    for (int i = 7; i < _nodes.length; i++) {
+      canvas.drawCircle(p(_nodes[i].$1, _nodes[i].$2), 1.2, dotSec);
     }
   }
 
   @override
-  bool shouldRepaint(ConstellationBgPainter old) => false;
+  bool shouldRepaint(ConstellationBgPainter old) => old.pulseValue != pulseValue;
 }

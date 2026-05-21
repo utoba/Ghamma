@@ -32,7 +32,6 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
   static const String _bellUrl =
       'https://www.eoni.cloud/ANANDA/AUDIO/BELL/bell_ananda1.mp3';
 
-  // ── controller come campi della classe ──
   late AnimationController _lissajousController;
   late AnimationController _starController;
 
@@ -41,6 +40,9 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
   int _remainingSeconds = 0;
   bool _showDurationPicker = false;
   bool _isFadingOut = false;
+
+  double _amplitude = 0.0;
+  Timer? _fadeTicker;
 
   DateTime? _sessionStartTime;
   int _totalSeconds = 0;
@@ -65,7 +67,7 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
 
     _starController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 15),  // ← da 60 a 8
+      duration: const Duration(seconds: 15),
     )..repeat();
 
     _initForegroundTask();
@@ -105,6 +107,35 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
     await FlutterForegroundTask.stopService();
   }
 
+  // ── fade animazione ──
+
+  void _fadeIn() {
+    _fadeTicker?.cancel();
+    _fadeTicker = Timer.periodic(const Duration(milliseconds: 30), (t) {
+      if (!mounted) { t.cancel(); return; }
+      setState(() {
+        _amplitude = (_amplitude + 0.02).clamp(0.0, 1.0);
+        if (_amplitude >= 1.0) t.cancel();
+      });
+    });
+  }
+
+  void _fadeOutAnimation({VoidCallback? onComplete}) {
+    _fadeTicker?.cancel();
+    _fadeTicker = Timer.periodic(const Duration(milliseconds: 30), (t) {
+      if (!mounted) { t.cancel(); return; }
+      setState(() {
+        _amplitude = (_amplitude - 0.02).clamp(0.0, 1.0);
+        if (_amplitude <= 0.0) {
+          t.cancel();
+          onComplete?.call();
+        }
+      });
+    });
+  }
+
+  // ── timer ──
+
   void _startRealTimer() {
     _sessionStartTime = DateTime.now();
     _totalSeconds = _selectedMinutes * 60;
@@ -132,12 +163,9 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
   Future<List<String>> _fetchTracks(String folderUrl) async {
     final response = await http.get(Uri.parse(folderUrl));
     if (response.statusCode != 200) return [];
-    final body = response.body;
     final regExp = RegExp(r'href="([^"]+\.mp3)"', caseSensitive: false);
-    final matches = regExp.allMatches(body);
-    return matches
-        .map((m) => folderUrl + m.group(1)!)
-        .toList();
+    final matches = regExp.allMatches(response.body);
+    return matches.map((m) => folderUrl + m.group(1)!).toList();
   }
 
   Future<void> _startAudio() async {
@@ -147,9 +175,7 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
     if (tracks.isEmpty) return;
     tracks.shuffle(Random());
     final playlist = ConcatenatingAudioSource(
-      children: tracks
-          .map((url) => AudioSource.uri(Uri.parse(url)))
-          .toList(),
+      children: tracks.map((url) => AudioSource.uri(Uri.parse(url))).toList(),
     );
     await _player.setAudioSource(playlist);
     await _player.setLoopMode(LoopMode.all);
@@ -166,6 +192,7 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
     _isFadingOut = true;
     const totalSteps = _fadeOutSeconds;
     int step = 0;
+    // fade out audio
     Timer.periodic(const Duration(seconds: 1), (timer) {
       step++;
       final volume = 1.0 - (step / totalSteps);
@@ -178,10 +205,13 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
         _endSession();
       }
     });
+    // fade out animazione
+    _fadeOutAnimation();
   }
 
   Future<void> _endSession() async {
     _ticker?.cancel();
+    _fadeTicker?.cancel();
     await _player.stop();
     await _stopForegroundTask();
     WakelockPlus.disable();
@@ -189,6 +219,7 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
     setState(() {
       _isPlaying = false;
       _isFadingOut = false;
+      _amplitude = 0.0;
       _remainingSeconds = 0;
     });
   }
@@ -196,15 +227,18 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
   void _togglePlay() {
     if (_isPlaying) {
       _ticker?.cancel();
-      _player.stop();
-      _player.setVolume(1.0);
-      _lissajousController.stop();
-      _stopForegroundTask();
-      WakelockPlus.disable();
-      setState(() {
-        _isPlaying = false;
-        _isFadingOut = false;
-        _remainingSeconds = _selectedMinutes * 60;
+      _fadeTicker?.cancel();
+      _fadeOutAnimation(onComplete: () {
+        _player.stop();
+        _player.setVolume(1.0);
+        _lissajousController.stop();
+        _stopForegroundTask();
+        WakelockPlus.disable();
+        setState(() {
+          _isPlaying = false;
+          _isFadingOut = false;
+          _remainingSeconds = _selectedMinutes * 60;
+        });
       });
     } else {
       setState(() {
@@ -217,11 +251,13 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
       _playBell();
       _startAudio();
       _startRealTimer();
+      _fadeIn();
     }
   }
 
   void _setDuration(int minutes) {
     _ticker?.cancel();
+    _fadeTicker?.cancel();
     _player.stop();
     _player.setVolume(1.0);
     _lissajousController.stop();
@@ -234,11 +270,13 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
       _showDurationPicker = false;
       _isPlaying = false;
       _isFadingOut = false;
+      _amplitude = 0.0;
     });
   }
 
   void _closeScreen() {
     _ticker?.cancel();
+    _fadeTicker?.cancel();
     _player.stop();
     _bellPlayer.stop();
     _lissajousController.stop();
@@ -256,6 +294,7 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _ticker?.cancel();
+    _fadeTicker?.cancel();
     _player.dispose();
     _bellPlayer.dispose();
     _lissajousController.dispose();
@@ -268,6 +307,7 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
     final progress = _totalSeconds > 0
         ? ((_totalSeconds - _remainingSeconds) / _totalSeconds).clamp(0.0, 1.0)
         : 0.0;
+
     return ScrollConfiguration(
       behavior: const ScrollBehavior().copyWith(scrollbars: false),
       child: Scaffold(
@@ -342,6 +382,7 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                                                 painter: VectorscopePainter(
                                                   t: _lissajousController.value,
                                                   isPlaying: _isPlaying,
+                                                  amplitude: _amplitude,
                                                 ),
                                                 child: const SizedBox.expand(),
                                               ),
@@ -465,32 +506,25 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                     ),
 
                     Positioned(
-                      top: 20,
-                      left: 35,
+                      top: 20, left: 35,
                       child: GestureDetector(
                         onTap: _closeScreen,
                         child: Container(
-                          width: 36,
-                          height: 36,
+                          width: 36, height: 36,
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.06),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.08),
-                              width: 1,
+                              color: Colors.white.withOpacity(0.08), width: 1,
                             ),
                           ),
-                          child: Icon(
-                            Icons.close,
-                            color: Colors.white.withOpacity(0.55),
-                            size: 16,
-                          ),
+                          child: Icon(Icons.close,
+                              color: Colors.white.withOpacity(0.55), size: 16),
                         ),
                       ),
                     ),
                     Positioned(
-                      top: 20,
-                      right: 35,
+                      top: 20, right: 35,
                       child: GestureDetector(
                         onTap: () => Navigator.push(
                           context,
@@ -513,29 +547,23 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                           ),
                         ),
                         child: Container(
-                          width: 36,
-                          height: 36,
+                          width: 36, height: 36,
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.06),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.08),
-                              width: 1,
+                              color: Colors.white.withOpacity(0.08), width: 1,
                             ),
                           ),
-                          child: Icon(
-                            Icons.info_outline,
-                            color: Colors.white.withOpacity(0.55),
-                            size: 16,
-                          ),
+                          child: Icon(Icons.info_outline,
+                              color: Colors.white.withOpacity(0.55), size: 16),
                         ),
                       ),
                     ),
+
                     if (_showDurationPicker)
                       Positioned(
-                        bottom: 100,
-                        left: 24,
-                        right: 24,
+                        bottom: 100, left: 24, right: 24,
                         child: GestureDetector(
                           onTap: () {},
                           child: Container(
@@ -543,8 +571,7 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                               color: const Color(0xFF1A1E18).withOpacity(0.95),
                               borderRadius: BorderRadius.circular(18),
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.1),
-                                width: 1,
+                                color: Colors.white.withOpacity(0.1), width: 1,
                               ),
                               boxShadow: [
                                 BoxShadow(

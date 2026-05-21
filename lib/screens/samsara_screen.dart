@@ -196,9 +196,9 @@ class _SamsaraScreenState extends State<SamsaraScreen>
             ),
 
             // ── background linee costellazione ──
-            CustomPaint(
+            const CustomPaint(
               painter: ConstellationBgPainter(),
-              child: const SizedBox.expand(),
+              child: SizedBox.expand(),
             ),
 
             // ── contenuto ──

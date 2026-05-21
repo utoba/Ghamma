@@ -25,11 +25,8 @@ class AnandaApp extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────
-//  TIMER RING PAINTER
-// ─────────────────────────────────────────────
 class TimerRingPainter extends CustomPainter {
-  final double progress; // 0.0 = inizio, 1.0 = fine
+  final double progress;
   final bool isPlaying;
 
   TimerRingPainter({required this.progress, required this.isPlaying});
@@ -40,7 +37,6 @@ class TimerRingPainter extends CustomPainter {
     final cy = size.height / 2;
     final radius = (size.width / 2) - 6;
 
-    // cerchio base grigio scuro
     final bgPaint = Paint()
       ..color = Colors.white.withOpacity(0.08)
       ..style = PaintingStyle.stroke
@@ -51,7 +47,6 @@ class TimerRingPainter extends CustomPainter {
 
     if (!isPlaying && progress == 0.0) return;
 
-    // arco bianco che avanza
     final fgPaint = Paint()
       ..color = Colors.white.withOpacity(0.25)
       ..style = PaintingStyle.stroke
@@ -59,10 +54,9 @@ class TimerRingPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     final sweepAngle = 2 * pi * progress;
-
     canvas.drawArc(
       Rect.fromCircle(center: Offset(cx, cy), radius: radius),
-      -pi / 2,      // parte dall'alto
+      -pi / 2,
       sweepAngle,
       false,
       fgPaint,
@@ -74,59 +68,60 @@ class TimerRingPainter extends CustomPainter {
       old.progress != progress || old.isPlaying != isPlaying;
 }
 
-// ─────────────────────────────────────────────
-//  VECTORSCOPE PAINTER
-// ─────────────────────────────────────────────
 class VectorscopePainter extends CustomPainter {
   final double t;
   final bool isPlaying;
+  final double amplitude;
 
-  VectorscopePainter({required this.t, required this.isPlaying});
+  VectorscopePainter({
+    required this.t,
+    required this.isPlaying,
+    this.amplitude = 1.0,
+  });
 
   @override
-void paint(Canvas canvas, Size size) {
-  final cx = size.width / 2;
-  final cy = size.height / 2;
-  final r = size.width * 0.32;
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final r = size.width * 0.32 * amplitude;
 
-  const steps = 400;
-  final speed = t * 2 * pi;
+    const steps = 400;
+    final speed = t * 2 * pi;
 
-  final passes = [
-    (width: 6.0, opacity: 0.06),
-    (width: 2.5, opacity: 0.30),
-    (width: 1.0, opacity: 0.95),
-  ];
+    final passes = [
+      (width: 6.0, opacity: 0.06 * amplitude),
+      (width: 2.5, opacity: 0.30 * amplitude),
+      (width: 1.0, opacity: 0.95 * amplitude),
+    ];
 
-  for (final pass in passes) {
-    final paint = Paint()
-      ..color = Color.fromRGBO(30, 200, 80, pass.opacity)
-      ..strokeWidth = pass.width
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
+    for (final pass in passes) {
+      final paint = Paint()
+        ..color = Color.fromRGBO(30, 200, 80, pass.opacity.clamp(0.0, 1.0))
+        ..strokeWidth = pass.width
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round;
 
-    final path = Path();
-    for (int i = 0; i <= steps; i++) {
-      final angle = (i / steps) * 2 * pi;
-      final x = cx + r * sin(2 * angle + speed);
-      final y = cy + r * sin(3 * angle);  // Y statico — solo X ruota
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
+      final path = Path();
+      for (int i = 0; i <= steps; i++) {
+        final angle = (i / steps) * 2 * pi;
+        final x = cx + r * sin(2 * angle + speed);
+        final y = cy + r * sin(3 * angle);
+        if (i == 0) {
+          path.moveTo(x, y);
+        } else {
+          path.lineTo(x, y);
+        }
       }
+      canvas.drawPath(path, paint);
     }
-    canvas.drawPath(path, paint);
   }
-}
 
   @override
   bool shouldRepaint(VectorscopePainter old) =>
-      old.t != t || old.isPlaying != isPlaying;
+      old.t != t || old.isPlaying != isPlaying || old.amplitude != amplitude;
 }
 
-// Stelle
 class StarfieldPainter extends CustomPainter {
   final double t;
   StarfieldPainter({required this.t});
@@ -137,24 +132,22 @@ class StarfieldPainter extends CustomPainter {
     final rng = Random(42);
     final stars = <_Star>[];
 
-    // magnitude 1 — 8 stelle grandi, concentrate nel 55% superiore
     for (int i = 0; i < 8; i++) {
       stars.add(_Star(
         x: rng.nextDouble(),
         y: rng.nextDouble() * 0.68,
         r: 2.2,
         phase: rng.nextDouble() * pi * 2,
-        speed: 1.2 + rng.nextDouble() * 1.0,  // più veloci
+        speed: 1.2 + rng.nextDouble() * 1.0,
         color: [
           const Color(0xFFFFFFFF),
           const Color(0xFFFFE8C0),
           const Color(0xFFC8D8FF),
         ][rng.nextInt(3)],
-        minOpacity: 0.05,   // minimo molto basso → contrasto alto
-        maxOpacity: 0.5,    // massimo pieno
+        minOpacity: 0.05,
+        maxOpacity: 0.5,
       ));
     }
-    // magnitude 2 — 14 stelle medie, nel 65% superiore
     for (int i = 0; i < 14; i++) {
       stars.add(_Star(
         x: rng.nextDouble(),
@@ -171,7 +164,6 @@ class StarfieldPainter extends CustomPainter {
         maxOpacity: 0.75,
       ));
     }
-    // magnitude 3 — 18 stelle piccole, nel 70% superiore
     for (int i = 0; i < 18; i++) {
       stars.add(_Star(
         x: rng.nextDouble(),
@@ -188,7 +180,6 @@ class StarfieldPainter extends CustomPainter {
         maxOpacity: 0.55,
       ));
     }
-    // magnitude 4-5 — 25 stelle tenui, nel 60% superiore
     for (int i = 0; i < 25; i++) {
       stars.add(_Star(
         x: rng.nextDouble(),
@@ -202,7 +193,6 @@ class StarfieldPainter extends CustomPainter {
       ));
     }
 
-    // Orsa Maggiore — posizioni fisse nel terzo superiore
     final orsaMaggiore = [
       (0.200, 0.205), (0.277, 0.188), (0.354, 0.179),
       (0.410, 0.191), (0.397, 0.229), (0.226, 0.148), (0.172, 0.120),
@@ -218,7 +208,6 @@ class StarfieldPainter extends CustomPainter {
       ));
     }
 
-    // Cassiopeia — in alto a destra
     final cassiopeia = [
       (0.654, 0.116), (0.697, 0.096), (0.744, 0.113),
       (0.790, 0.093), (0.833, 0.110),
@@ -246,7 +235,6 @@ class StarfieldPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // ── alone blu scuro in alto ──
     final blueGlow = Paint()
       ..shader = RadialGradient(
         center: const Alignment(0.0, -1.0),
@@ -263,10 +251,9 @@ class StarfieldPainter extends CustomPainter {
       blueGlow,
     );
 
-    final orsaOffset = 65; // 8+14+18+25
-    final cassOffset = orsaOffset + 7;
+    const orsaOffset = 65;
+    const cassOffset = orsaOffset + 7;
 
-    // linee costellazioni
     final linePaint = Paint()
       ..color = Colors.white.withOpacity(0.10)
       ..strokeWidth = 0.5
@@ -291,11 +278,7 @@ class StarfieldPainter extends CustomPainter {
       );
     }
 
-    // stelle
     for (final star in _stars) {
-      // flickering più aggressivo: sin^2 per scatti netti
-      // DOPO
-      // PRIMA
       final raw = sin(t * 80 * pi * (1 / star.speed) + star.phase);
       final flicker = (raw * raw * raw).abs() > 0.3 ? raw * raw : 0.0;
       final opacity = star.minOpacity +

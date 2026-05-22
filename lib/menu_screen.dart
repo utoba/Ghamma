@@ -186,37 +186,7 @@ class _MenuScreenState extends State<MenuScreen>
                     color: Colors.white.withOpacity(0.1),
                   ),
 
-                  Center(
-                    child: Column(
-                      children: [
-                        Text(
-                          'Sound and silence as a tool for the mind.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.55),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w300,
-                            letterSpacing: 0.5,
-                            height: 1.6,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Void is best experienced with high-quality headphones.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.35),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w300,
-                            letterSpacing: 0.5,
-                            height: 1.6,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const Spacer(),
+                  const SizedBox(height: 30),
 
                   Center(
                     child: Text(
@@ -230,7 +200,7 @@ class _MenuScreenState extends State<MenuScreen>
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 45),
 
                   _MenuCard(
                     title: 'V O I D',
@@ -238,7 +208,7 @@ class _MenuScreenState extends State<MenuScreen>
                     onTap: () => Navigator.push(context, _slideRoute(const VoidScreen())),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 27),
 
                   _MenuCard(
                     title: 'S A M S A R A',
@@ -246,7 +216,7 @@ class _MenuScreenState extends State<MenuScreen>
                     onTap: () => Navigator.push(context, _slideRoute(const SamsaraScreen())),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 27),
 
                   _MenuCard(
                     title: 'S I L E N C E',
@@ -254,7 +224,7 @@ class _MenuScreenState extends State<MenuScreen>
                     onTap: () => Navigator.push(context, _slideRoute(const SilenceScreen())),
                   ),
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 48),
                 ],
               ),
             ),

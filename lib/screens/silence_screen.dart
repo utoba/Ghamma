@@ -12,20 +12,21 @@ class SilenceScreen extends StatefulWidget {
 
 class _SilenceScreenState extends State<SilenceScreen>
     with SingleTickerProviderStateMixin {
-  // ── Timer state ────────────────────────────────────────────
   int _selectedMinutes = 20;
   int _totalSeconds = 0;
   int _elapsedSeconds = 0;
   bool _isRunning = false;
+  bool _sessionEnded = false; // true quando il timer arriva a zero
+  bool _showDurationPicker = false;
   Timer? _timer;
-
-  // ── Audio ──────────────────────────────────────────────────
   final AudioPlayer _bellPlayer = AudioPlayer();
   static const String _bellUrl =
       'https://www.eoni.cloud/ANANDA/AUDIO/BELL/bell_ananda1.mp3';
-
-  // ── Ring animation ─────────────────────────────────────────
   late AnimationController _pulseController;
+
+  static const List<int> _minuteOptions = [
+    5, 10, 15, 20, 25, 30, 45, 60
+  ];
 
   @override
   void initState() {
@@ -55,19 +56,32 @@ class _SilenceScreenState extends State<SilenceScreen>
 
   void _startStop() {
     if (_isRunning) {
+      // STOP manuale
       _timer?.cancel();
-      setState(() => _isRunning = false);
+      setState(() {
+        _isRunning = false;
+        // non resettiamo: mostriamo il reset al posto del duration picker
+      });
     } else {
-      if (_elapsedSeconds >= _totalSeconds) {
-        setState(() => _elapsedSeconds = 0);
+      // START (o riavvio dopo fine)
+      if (_sessionEnded) {
+        // reset automatico se la sessione era finita
+        setState(() {
+          _elapsedSeconds = 0;
+          _sessionEnded = false;
+          _totalSeconds = _selectedMinutes * 60;
+        });
       }
       _playBell();
       setState(() => _isRunning = true);
       _timer = Timer.periodic(const Duration(seconds: 1), (_) {
         if (_elapsedSeconds >= _totalSeconds) {
           _timer?.cancel();
-          setState(() => _isRunning = false);
           _playBell();
+          setState(() {
+            _isRunning = false;
+            _sessionEnded = true;
+          });
         } else {
           setState(() => _elapsedSeconds++);
         }
@@ -79,8 +93,21 @@ class _SilenceScreenState extends State<SilenceScreen>
     _timer?.cancel();
     setState(() {
       _isRunning = false;
+      _sessionEnded = false;
       _elapsedSeconds = 0;
       _totalSeconds = _selectedMinutes * 60;
+    });
+  }
+
+  void _setDuration(int minutes) {
+    _timer?.cancel();
+    setState(() {
+      _selectedMinutes = minutes;
+      _totalSeconds = minutes * 60;
+      _elapsedSeconds = 0;
+      _isRunning = false;
+      _sessionEnded = false;
+      _showDurationPicker = false;
     });
   }
 
@@ -98,280 +125,410 @@ class _SilenceScreenState extends State<SilenceScreen>
   double get _progress =>
       _totalSeconds > 0 ? _elapsedSeconds / _totalSeconds : 0.0;
 
+  // Il lato sinistro dei controlli mostra:
+  // - duration picker button  →  quando non è in pausa dopo l'avvio
+  // - reset button            →  quando la sessione è in pausa (avviata ma fermata)
+  //                               oppure quando è terminata
+  bool get _showResetSlot =>
+      !_isRunning && (_elapsedSeconds > 0 || _sessionEnded);
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1A1E18),
-      body: Stack(
-        children: [
-          // ── Background gradient ──────────────────────────────
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF1A1E18),
-                  Color(0xFF1A1E18),
-                  Color(0x3A1A2A3A),
-                ],
-                stops: [0.0, 0.5, 1.0],
+    return GestureDetector(
+      onTap: () {
+        if (_showDurationPicker) setState(() => _showDurationPicker = false);
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF1A1E18),
+        body: Stack(
+          children: [
+            // ── sfondo gradient (identico a Void) ──
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    Color(0xFF1A1E18),
+                    Color(0xFF1A1E18),
+                    Color(0x5973521F),
+                  ],
+                  stops: [0.0, 0.45, 1.0],
+                ),
               ),
             ),
-          ),
 
-          // ── Main content ─────────────────────────────────────
-          SafeArea(
-            child: Column(
-              children: [
-                // ── Top bar — close a sinistra ───────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 16),
-                  child: Row(
+            // ── contenuto principale ──
+            SafeArea(
+              child: Stack(
+                children: [
+                  Column(
                     children: [
-                      GestureDetector(
-                        onTap: () => Navigator.of(context).pop(),
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.06),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.08),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.06),
+                              borderRadius: BorderRadius.circular(28),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.08),
+                                width: 1,
+                              ),
                             ),
-                          ),
-                          child: Icon(
-                            Icons.close,
-                            color: Colors.white.withOpacity(0.50),
-                            size: 18,
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                children: [
+                                  // ── cerchio pulsante (si espande come in Void) ──
+                                  Expanded(
+                                    child: AnimatedBuilder(
+                                      animation: _pulseController,
+                                      builder: (context, _) {
+                                        return CustomPaint(
+                                          painter: _SilenceRingPainter(
+                                            progress: _progress,
+                                            pulse: _isRunning
+                                                ? _pulseController.value
+                                                : 0.0,
+                                          ),
+                                          child: SizedBox.expand(
+                                            child: Center(
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    _displayTime,
+                                                    style: const TextStyle(
+                                                      color: Color(0xFFCCCCCC),
+                                                      fontSize: 52,
+                                                      fontWeight:
+                                                          FontWeight.w200,
+                                                      letterSpacing: 6,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    _isRunning
+                                                        ? 'running'
+                                                        : _sessionEnded
+                                                            ? 'complete'
+                                                            : 'ready',
+                                                    style: TextStyle(
+                                                      color: Colors.white
+                                                          .withOpacity(0.25),
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w300,
+                                                      letterSpacing: 3,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 16),
+
+                                  // ── titolo ──
+                                  Text(
+                                    'S I L E N C E',
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.85),
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w200,
+                                      letterSpacing: 10,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Meditation Timer',
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.35),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w300,
+                                      letterSpacing: 3,
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 24),
+
+                                  // ── controlli ──
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      // Slot sinistro: duration picker ↔ reset
+                                      AnimatedSwitcher(
+                                        duration:
+                                            const Duration(milliseconds: 200),
+                                        child: _showResetSlot
+                                            ? _ResetButton(
+                                                key: const ValueKey('reset'),
+                                                onTap: _reset,
+                                              )
+                                            : _DurationButton(
+                                                key: const ValueKey('duration'),
+                                                minutes: _selectedMinutes,
+                                                onTap: () => setState(() =>
+                                                    _showDurationPicker =
+                                                        !_showDurationPicker),
+                                              ),
+                                      ),
+
+                                      const SizedBox(width: 20),
+
+                                      // Slot destro: start / stop
+                                      GestureDetector(
+                                        onTap: _startStop,
+                                        child: SizedBox(
+                                          width: 130,
+                                          height: 48,
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              color: Colors.white
+                                                  .withOpacity(0.09),
+                                              borderRadius:
+                                                  BorderRadius.circular(14),
+                                              border: Border.all(
+                                                color: Colors.white
+                                                    .withOpacity(0.12),
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: Center(
+                                              child: Text(
+                                                _isRunning ? 'STOP' : 'START',
+                                                style: TextStyle(
+                                                  color: Colors.white
+                                                      .withOpacity(0.75),
+                                                  fontSize: 12,
+                                                  letterSpacing: 2.5,
+                                                  fontWeight: FontWeight.w400,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  const SizedBox(height: 8),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                       ),
+                      const SizedBox(height: 8),
                     ],
                   ),
-                ),
 
-                const SizedBox(height: 8),
-
-                // ── Titolo ───────────────────────────────────
-                const Text(
-                  'S I L E N C E',
-                  style: TextStyle(
-                    color: Color(0xFFCCCCCC),
-                    fontSize: 25,
-                    fontWeight: FontWeight.w200,
-                    letterSpacing: 10,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Meditation Timer',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.35),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w300,
-                    letterSpacing: 2,
-                  ),
-                ),
-
-                const Spacer(),
-
-                // ── Timer ring ───────────────────────────────
-                AnimatedBuilder(
-                  animation: _pulseController,
-                  builder: (context, _) {
-                    return CustomPaint(
-                      size: const Size(260, 260),
-                      painter: _SilenceRingPainter(
-                        progress: _progress,
-                        pulse: _isRunning ? _pulseController.value : 0.0,
+                  // ── tasto X (chiudi) ──
+                  Positioned(
+                    top: 20,
+                    left: 35,
+                    child: GestureDetector(
+                      onTap: () {
+                        _timer?.cancel();
+                        Navigator.pop(context);
+                      },
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.08),
+                            width: 1,
+                          ),
+                        ),
+                        child: Icon(Icons.close,
+                            color: Colors.white.withOpacity(0.55), size: 16),
                       ),
-                      child: SizedBox(
-                        width: 260,
-                        height: 260,
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                _displayTime,
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.85),
-                                  fontSize: 48,
-                                  fontWeight: FontWeight.w200,
-                                  letterSpacing: 4,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _isRunning ? 'running' : 'ready',
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.25),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w300,
-                                  letterSpacing: 3,
-                                ),
+                    ),
+                  ),
+
+                  // ── overlay duration picker (identico a Void) ──
+                  if (_showDurationPicker)
+                    Positioned(
+                      bottom: 100,
+                      left: 24,
+                      right: 24,
+                      child: GestureDetector(
+                        onTap: () {}, // blocca tap-through
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFF1A1E18).withOpacity(0.95),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.1),
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.55),
+                                blurRadius: 24,
+                                offset: const Offset(0, 8),
                               ),
                             ],
                           ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-
-                const Spacer(),
-
-                // ── Duration selector — centrato con Wrap ────
-                if (!_isRunning && _elapsedSeconds == 0) ...[
-                  Text(
-                    'duration',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.30),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w300,
-                      letterSpacing: 3,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
-                    child: Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      alignment: WrapAlignment.center,
-                      children: _durations.map((min) {
-                        final selected = min == _selectedMinutes;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedMinutes = min;
-                              _totalSeconds = min * 60;
-                              _elapsedSeconds = 0;
-                            });
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 18, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: selected
-                                  ? Colors.white.withOpacity(0.12)
-                                  : Colors.white.withOpacity(0.04),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: selected
-                                    ? Colors.white.withOpacity(0.25)
-                                    : Colors.white.withOpacity(0.06),
-                              ),
-                            ),
-                            child: Text(
-                              '$min min',
-                              style: TextStyle(
-                                color: selected
-                                    ? Colors.white.withOpacity(0.85)
-                                    : Colors.white.withOpacity(0.35),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w300,
-                                letterSpacing: 1,
-                              ),
-                            ),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 16, horizontal: 12),
+                          child: Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _minuteOptions.map((min) {
+                              final isSelected = min == _selectedMinutes;
+                              return GestureDetector(
+                                onTap: () => _setDuration(min),
+                                child: AnimatedContainer(
+                                  duration:
+                                      const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? Colors.white.withOpacity(0.12)
+                                        : Colors.white.withOpacity(0.06),
+                                    borderRadius:
+                                        BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? Colors.white.withOpacity(0.35)
+                                          : Colors.white.withOpacity(0.08),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    '$min min',
+                                    style: TextStyle(
+                                      color: isSelected
+                                          ? Colors.white.withOpacity(0.90)
+                                          : Colors.white.withOpacity(0.55),
+                                      fontSize: 13,
+                                      letterSpacing: 1.2,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w400
+                                          : FontWeight.w300,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                           ),
-                        );
-                      }).toList(),
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 32),
-                ] else ...[
-                  const SizedBox(height: 88),
                 ],
-
-                // ── Start / Stop button ──────────────────────
-                GestureDetector(
-                  onTap: _startStop,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _isRunning
-                          ? Colors.white.withOpacity(0.08)
-                          : Colors.white.withOpacity(0.12),
-                      border: Border.all(
-                        color: _isRunning
-                            ? Colors.white.withOpacity(0.15)
-                            : Colors.white.withOpacity(0.25),
-                        width: 1,
-                      ),
-                    ),
-                    child: Icon(
-                      _isRunning ? Icons.pause : Icons.play_arrow,
-                      color: Colors.white.withOpacity(0.75),
-                      size: 28,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // ── Reset button — più grande ────────────────
-                AnimatedOpacity(
-                  opacity: !_isRunning && _elapsedSeconds > 0 ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 300),
-                  child: GestureDetector(
-                    onTap: !_isRunning && _elapsedSeconds > 0 ? _reset : null,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 32, vertical: 14),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.10),
-                        ),
-                      ),
-                      child: Text(
-                        'R E S E T',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.40),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w300,
-                          letterSpacing: 4,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 52),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-// ── Duration options ───────────────────────────────────────────────────────────
-const List<int> _durations = [5, 10, 15, 20, 30, 45, 60];
+// ── widget bottone durata ──
+class _DurationButton extends StatelessWidget {
+  final int minutes;
+  final VoidCallback onTap;
+  const _DurationButton({super.key, required this.minutes, required this.onTap});
 
-// ── Ring Painter ───────────────────────────────────────────────────────────────
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 130,
+        height: 48,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.09),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+                color: Colors.white.withOpacity(0.12), width: 1),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.timer_outlined,
+                  color: Colors.white.withOpacity(0.65), size: 18),
+              const SizedBox(width: 8),
+              Text(
+                '$minutes min',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.65),
+                  fontSize: 14,
+                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── widget bottone reset ──
+class _ResetButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _ResetButton({super.key, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 130,
+        height: 48,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+                color: Colors.white.withOpacity(0.10), width: 1),
+          ),
+          child: Center(
+            child: Text(
+              'RESET',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.45),
+                fontSize: 12,
+                letterSpacing: 2.5,
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── painter cerchio ──
 class _SilenceRingPainter extends CustomPainter {
   final double progress;
   final double pulse;
-
-  _SilenceRingPainter({required this.progress, required this.pulse});
+  const _SilenceRingPainter({required this.progress, required this.pulse});
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 16;
+    // stesso raggio proporzionale di Void (lascia margine 16px da ogni lato)
+    final radius = math.min(size.width, size.height) / 2 - 16;
 
-    // Glow pulse quando running
+    // glow pulsante
     if (pulse > 0) {
       final glowPaint = Paint()
         ..color = Colors.white.withOpacity(0.03 * pulse)
@@ -381,7 +538,7 @@ class _SilenceRingPainter extends CustomPainter {
       canvas.drawCircle(center, radius, glowPaint);
     }
 
-    // Track base
+    // traccia di sfondo
     final trackPaint = Paint()
       ..color = Colors.white.withOpacity(0.07)
       ..style = PaintingStyle.stroke
@@ -389,14 +546,13 @@ class _SilenceRingPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     canvas.drawCircle(center, radius, trackPaint);
 
-    // Progress arc
+    // arco progresso + dot
     if (progress > 0) {
       final progressPaint = Paint()
         ..color = Colors.white.withOpacity(0.55)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5
         ..strokeCap = StrokeCap.round;
-
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         -math.pi / 2,
@@ -404,8 +560,6 @@ class _SilenceRingPainter extends CustomPainter {
         false,
         progressPaint,
       );
-
-      // Dot alla fine dell'arco
       final angle = -math.pi / 2 + 2 * math.pi * progress;
       final dotX = center.dx + radius * math.cos(angle);
       final dotY = center.dy + radius * math.sin(angle);

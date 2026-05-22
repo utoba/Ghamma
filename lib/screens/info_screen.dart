@@ -72,7 +72,7 @@ class InfoScreen extends StatelessWidget {
                     children: [
                       const SizedBox(height: 8),
                       _paragraph(
-                        'This is a selection of binaural beats, isochronic tones, and bilateral beats — to offer a complete experience of what the study of sound and psychophysical states has to offer today.',
+                        'This is a selection of binaural beats, isochronic tones, and bilateral beats — to offer a complete experience of what the study of sound and psychophysical states has to offer today. This section is best experienced with quality headphones.',
                       ),
                       _divider(),
                       _paragraph(

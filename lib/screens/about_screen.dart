@@ -24,7 +24,7 @@ class AboutScreen extends StatelessWidget {
                 ),
                 _buildDivider(),
                 _buildParagraph(
-                  'If I feel I\'ve succeeded in my intention, and if the humans out there offer the support needed, I\'d love to keep updating Ananda continuously — with new musical productions and with audio material drawn from advances in research on Binaural Beats, Isochronic Tones, Bilateral Alternating Stimulation, and whatever else the future of this fascinating field may bring.',
+                  'If I feel I\'ve succeeded in my intention, and if the humans out there offer the support needed, I\'d love to keep updating Ghamma continuously — with new musical productions and with audio material drawn from advances in research on Binaural Beats, Isochronic Tones, Bilateral Alternating Stimulation, and whatever else the future of this fascinating field may bring.',
                 ),
                 const SizedBox(height: 16),
                 _buildParagraph(
@@ -32,7 +32,7 @@ class AboutScreen extends StatelessWidget {
                 ),
                 _buildDivider(),
                 _buildParagraph(
-                  'The simplicity of the app is a deliberate choice. My idea is to give the user an immediate, ready, working experience — one that skips the time needed to navigate through menus, questions, and decisions. The user should know that Ananda does what it does, and does it well.',
+                  'The simplicity of the app is a deliberate choice. My idea is to give the user an immediate, ready, working experience — one that skips the time needed to navigate through menus, questions, and decisions. The user should know that Ghamma does what it does, and does it well.',
                 ),
                 const SizedBox(height: 16),
                 _buildParagraph(
@@ -40,7 +40,7 @@ class AboutScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 _buildParagraph(
-                  'The material in Ananda has already been prepared and formatted to offer a coherent and meaningful experience. The focus should be entirely on the present-moment experience, and nothing more. The app offers each session through a random algorithm, making every session unique and completely different.',
+                  'The audio material in Ghamma has already been prepared and formatted to offer a coherent and meaningful experience. The focus should be entirely on the present-moment experience, and nothing more. The app offers each session through a random algorithm, making every session unique and completely different.',
                 ),
                 _buildDivider(),
                 _buildParagraph(

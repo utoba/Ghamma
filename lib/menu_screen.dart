@@ -170,10 +170,10 @@ class _MenuScreenState extends State<MenuScreen>
 
                   const Center(
                     child: Text(
-                      'A N A N D A',
+                      'G H A M M A',
                       style: TextStyle(
                         color: Color(0xFFCCCCCC),
-                        fontSize: 37,
+                        fontSize: 34,
                         fontWeight: FontWeight.w200,
                         letterSpacing: 12,
                       ),

@@ -22,9 +22,9 @@ class SamsaraInfoScreen extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
+              // ── header ──
               Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 24, vertical: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -40,36 +40,50 @@ class SamsaraInfoScreen extends StatelessWidget {
                             width: 1,
                           ),
                         ),
-                        child: Icon(Icons.close,
-                            color: Colors.white.withOpacity(0.55),
-                            size: 16),
+                        child: Icon(
+                          Icons.close,
+                          color: Colors.white.withOpacity(0.55),
+                          size: 16,
+                        ),
                       ),
                     ),
                     const Spacer(),
                     Text(
-                      'A M B I E N T',
+                      'Ambient Soundscapes',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.55),
-                        fontSize: 11,
-                        letterSpacing: 4,
+                        fontSize: 18,
+                        letterSpacing: 2,
                         fontWeight: FontWeight.w300,
                       ),
                     ),
                     const Spacer(),
-                    const SizedBox(width: 36),
+                    const SizedBox(width: 32),
                   ],
                 ),
               ),
+
+              // ── contenuto ──
               Expanded(
-                child: Center(
-                  child: Text(
-                    'coming soon',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.25),
-                      fontSize: 13,
-                      letterSpacing: 3,
-                      fontWeight: FontWeight.w300,
-                    ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 8),
+                      _paragraph(
+                        'This section contains a constantly updated selection of audio material that I hope can offer support and assistance to states of relaxation, focus, and insight, or serve as a sonic background for work, study, or moments of socialization.',
+                      ),
+                      _divider(),
+                      _paragraph(
+                        'Some of the tracks in this section are part of the musical project "eoni" that represents my artistic evolution towards more meditative sonic forms and freer compositional processes. For more information, visit https://eoni.bandcamp.com/ and https://www.eoni.cloud/',
+                      ),
+                      _divider(),
+                      _paragraph(
+                        "Other tracks have been composed and mixed specifically for this section."
+                      ),
+                      const SizedBox(height: 48),
+                    ],
                   ),
                 ),
               ),
@@ -77,6 +91,29 @@ class SamsaraInfoScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _paragraph(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: Colors.white.withOpacity(0.65),
+          fontSize: 15,
+          fontWeight: FontWeight.w300,
+          letterSpacing: 0.3,
+          height: 1.75,
+        ),
+      ),
+    );
+  }
+
+  Widget _divider() {
+    return Container(
+      height: 1,
+      color: Colors.white.withOpacity(0.06),
     );
   }
 }

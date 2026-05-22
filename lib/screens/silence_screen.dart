@@ -11,22 +11,21 @@ class SilenceScreen extends StatefulWidget {
 }
 
 class _SilenceScreenState extends State<SilenceScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   int _selectedMinutes = 20;
   int _totalSeconds = 0;
   int _elapsedSeconds = 0;
   bool _isRunning = false;
-  bool _sessionEnded = false; // true quando il timer arriva a zero
+  bool _sessionEnded = false;
   bool _showDurationPicker = false;
   Timer? _timer;
   final AudioPlayer _bellPlayer = AudioPlayer();
   static const String _bellUrl =
       'https://www.eoni.cloud/ANANDA/AUDIO/BELL/bell_ananda1.mp3';
   late AnimationController _pulseController;
+  late AnimationController _lotusController;
 
-  static const List<int> _minuteOptions = [
-    5, 10, 15, 20, 25, 30, 45, 60
-  ];
+  static const List<int> _minuteOptions = [5, 10, 15, 20, 25, 30, 45, 60];
 
   @override
   void initState() {
@@ -36,12 +35,18 @@ class _SilenceScreenState extends State<SilenceScreen>
       vsync: this,
       duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
+    // rotazione lentissima del loto — un giro completo ogni 120 secondi
+    _lotusController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 120),
+    )..repeat();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     _pulseController.dispose();
+    _lotusController.dispose();
     _bellPlayer.dispose();
     super.dispose();
   }
@@ -56,16 +61,10 @@ class _SilenceScreenState extends State<SilenceScreen>
 
   void _startStop() {
     if (_isRunning) {
-      // STOP manuale
       _timer?.cancel();
-      setState(() {
-        _isRunning = false;
-        // non resettiamo: mostriamo il reset al posto del duration picker
-      });
+      setState(() => _isRunning = false);
     } else {
-      // START (o riavvio dopo fine)
       if (_sessionEnded) {
-        // reset automatico se la sessione era finita
         setState(() {
           _elapsedSeconds = 0;
           _sessionEnded = false;
@@ -125,10 +124,6 @@ class _SilenceScreenState extends State<SilenceScreen>
   double get _progress =>
       _totalSeconds > 0 ? _elapsedSeconds / _totalSeconds : 0.0;
 
-  // Il lato sinistro dei controlli mostra:
-  // - duration picker button  →  quando non è in pausa dopo l'avvio
-  // - reset button            →  quando la sessione è in pausa (avviata ma fermata)
-  //                               oppure quando è terminata
   bool get _showResetSlot =>
       !_isRunning && (_elapsedSeconds > 0 || _sessionEnded);
 
@@ -142,7 +137,7 @@ class _SilenceScreenState extends State<SilenceScreen>
         backgroundColor: const Color(0xFF1A1E18),
         body: Stack(
           children: [
-            // ── sfondo gradient (identico a Void) ──
+            // ── sfondo gradient ──
             Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
@@ -154,6 +149,18 @@ class _SilenceScreenState extends State<SilenceScreen>
                     Color(0x5973521F),
                   ],
                   stops: [0.0, 0.45, 1.0],
+                ),
+              ),
+            ),
+
+            // ── loto di sfondo, centrato, lentamente rotante ──
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: _lotusController,
+                builder: (_, __) => CustomPaint(
+                  painter: _LotusPainter(
+                    rotation: _lotusController.value * 2 * math.pi,
+                  ),
                 ),
               ),
             ),
@@ -180,7 +187,7 @@ class _SilenceScreenState extends State<SilenceScreen>
                               padding: const EdgeInsets.all(24),
                               child: Column(
                                 children: [
-                                  // ── cerchio pulsante (si espande come in Void) ──
+                                  // ── cerchio timer ──
                                   Expanded(
                                     child: AnimatedBuilder(
                                       animation: _pulseController,
@@ -217,7 +224,7 @@ class _SilenceScreenState extends State<SilenceScreen>
                                                     style: TextStyle(
                                                       color: Colors.white
                                                           .withOpacity(0.25),
-                                                      fontSize: 12,
+                                                      fontSize: 15,
                                                       fontWeight:
                                                           FontWeight.w300,
                                                       letterSpacing: 3,
@@ -234,7 +241,6 @@ class _SilenceScreenState extends State<SilenceScreen>
 
                                   const SizedBox(height: 16),
 
-                                  // ── titolo ──
                                   Text(
                                     'S I L E N C E',
                                     style: TextStyle(
@@ -261,7 +267,6 @@ class _SilenceScreenState extends State<SilenceScreen>
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      // Slot sinistro: duration picker ↔ reset
                                       AnimatedSwitcher(
                                         duration:
                                             const Duration(milliseconds: 200),
@@ -278,10 +283,7 @@ class _SilenceScreenState extends State<SilenceScreen>
                                                         !_showDurationPicker),
                                               ),
                                       ),
-
                                       const SizedBox(width: 20),
-
-                                      // Slot destro: start / stop
                                       GestureDetector(
                                         onTap: _startStop,
                                         child: SizedBox(
@@ -316,7 +318,6 @@ class _SilenceScreenState extends State<SilenceScreen>
                                       ),
                                     ],
                                   ),
-
                                   const SizedBox(height: 8),
                                 ],
                               ),
@@ -328,7 +329,7 @@ class _SilenceScreenState extends State<SilenceScreen>
                     ],
                   ),
 
-                  // ── tasto X (chiudi) ──
+                  // ── tasto X ──
                   Positioned(
                     top: 20,
                     left: 35,
@@ -354,18 +355,17 @@ class _SilenceScreenState extends State<SilenceScreen>
                     ),
                   ),
 
-                  // ── overlay duration picker (identico a Void) ──
+                  // ── overlay duration picker ──
                   if (_showDurationPicker)
                     Positioned(
                       bottom: 100,
                       left: 24,
                       right: 24,
                       child: GestureDetector(
-                        onTap: () {}, // blocca tap-through
+                        onTap: () {},
                         child: Container(
                           decoration: BoxDecoration(
-                            color:
-                                const Color(0xFF1A1E18).withOpacity(0.95),
+                            color: const Color(0xFF1A1E18).withOpacity(0.95),
                             borderRadius: BorderRadius.circular(18),
                             border: Border.all(
                               color: Colors.white.withOpacity(0.1),
@@ -390,16 +390,14 @@ class _SilenceScreenState extends State<SilenceScreen>
                               return GestureDetector(
                                 onTap: () => _setDuration(min),
                                 child: AnimatedContainer(
-                                  duration:
-                                      const Duration(milliseconds: 200),
+                                  duration: const Duration(milliseconds: 200),
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 16, vertical: 10),
                                   decoration: BoxDecoration(
                                     color: isSelected
                                         ? Colors.white.withOpacity(0.12)
                                         : Colors.white.withOpacity(0.06),
-                                    borderRadius:
-                                        BorderRadius.circular(10),
+                                    borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
                                       color: isSelected
                                           ? Colors.white.withOpacity(0.35)
@@ -437,11 +435,166 @@ class _SilenceScreenState extends State<SilenceScreen>
   }
 }
 
-// ── widget bottone durata ──
+// ─────────────────────────────────────────────
+// LOTUS PAINTER — sfondo + potenziale logo
+// ─────────────────────────────────────────────
+class _LotusPainter extends CustomPainter {
+  final double rotation;
+  const _LotusPainter({required this.rotation});
+
+  // Disegna un petalo a forma di mandorla centrato nell'origine,
+  // puntato verso l'alto, poi ruotato di [angle] radianti.
+  void _drawPetal(
+    Canvas canvas,
+    Offset center,
+    double angle,
+    double length,
+    double width,
+    Paint fillPaint,
+    Paint strokePaint,
+  ) {
+    final path = Path();
+    // Il petalo è una curva bezier simmetrica: parte dal centro,
+    // sale fino a [length] verso l'alto, tornando al centro.
+    // Usiamo coordinate locali con y verso l'alto = -y in Flutter.
+    final cp1x = width;
+    final cp1y = -length * 0.45;
+    final cp2x = width * 0.5;
+    final cp2y = -length * 0.85;
+    final tipX = 0.0;
+    final tipY = -length;
+    final cp3x = -width * 0.5;
+    final cp3y = -length * 0.85;
+    final cp4x = -width;
+    final cp4y = -length * 0.45;
+
+    path.moveTo(0, 0);
+    path.cubicTo(cp1x, cp1y, cp2x, cp2y, tipX, tipY);
+    path.cubicTo(cp3x, cp3y, cp4x, cp4y, 0, 0);
+    path.close();
+
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(angle);
+    canvas.drawPath(path, fillPaint);
+    canvas.drawPath(path, strokePaint);
+    canvas.restore();
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+
+    // Le dimensioni del loto scalano con lo schermo (60% del lato minore)
+    final maxR = math.min(size.width, size.height) * 0.60;
+
+    // ── Paint comuni ──
+    final fillOuter = Paint()
+      ..color = Colors.white.withOpacity(0.025)
+      ..style = PaintingStyle.fill;
+    final strokeOuter = Paint()
+      ..color = Colors.white.withOpacity(0.09)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.7;
+
+    final fillMid = Paint()
+      ..color = Colors.white.withOpacity(0.030)
+      ..style = PaintingStyle.fill;
+    final strokeMid = Paint()
+      ..color = Colors.white.withOpacity(0.10)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.7;
+
+    final fillInner = Paint()
+      ..color = Colors.white.withOpacity(0.035)
+      ..style = PaintingStyle.fill;
+    final strokeInner = Paint()
+      ..color = Colors.white.withOpacity(0.13)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+
+    final centerRingPaint = Paint()
+      ..color = Colors.white.withOpacity(0.10)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.7;
+
+    final centerDotPaint = Paint()
+      ..color = Colors.white.withOpacity(0.18)
+      ..style = PaintingStyle.fill;
+
+    final stamenPaint = Paint()
+      ..color = Colors.white.withOpacity(0.07)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.6;
+
+    const petalCount = 8;
+    const twoPi = math.pi * 2;
+
+    // ── Strato esterno: 8 petali principali ──
+    for (int i = 0; i < petalCount; i++) {
+      final angle = rotation + (twoPi / petalCount) * i;
+      _drawPetal(canvas, center, angle, maxR, maxR * 0.18,
+          fillOuter, strokeOuter);
+    }
+
+    // ── Strato esterno interleaved: 8 petali più corti, sfasati di 22.5° ──
+    for (int i = 0; i < petalCount; i++) {
+      final angle = rotation + (twoPi / petalCount) * i + (twoPi / 16);
+      _drawPetal(canvas, center, angle, maxR * 0.80, maxR * 0.14,
+          fillOuter, strokeOuter);
+    }
+
+    // ── Strato medio: 8 petali sfasati di 22.5° ──
+    for (int i = 0; i < petalCount; i++) {
+      final angle = rotation + (twoPi / petalCount) * i + (twoPi / 16);
+      _drawPetal(canvas, center, angle, maxR * 0.62, maxR * 0.13,
+          fillMid, strokeMid);
+    }
+
+    // ── Strato interno: 8 petali allineati ai principali ──
+    for (int i = 0; i < petalCount; i++) {
+      final angle = rotation + (twoPi / petalCount) * i;
+      _drawPetal(canvas, center, angle, maxR * 0.38, maxR * 0.10,
+          fillInner, strokeInner);
+    }
+
+    // ── Cerchi concentrici al centro ──
+    for (final r in [maxR * 0.14, maxR * 0.10, maxR * 0.06]) {
+      canvas.drawCircle(center, r, centerRingPaint);
+    }
+
+    // ── Stami: 8 segmenti radiali brevi ──
+    for (int i = 0; i < petalCount; i++) {
+      final angle = rotation + (twoPi / petalCount) * i;
+      final r1 = maxR * 0.06;
+      final r2 = maxR * 0.13;
+      final p1 = Offset(
+        center.dx + r1 * math.sin(angle),
+        center.dy - r1 * math.cos(angle),
+      );
+      final p2 = Offset(
+        center.dx + r2 * math.sin(angle),
+        center.dy - r2 * math.cos(angle),
+      );
+      canvas.drawLine(p1, p2, stamenPaint);
+    }
+
+    // ── Punto centrale ──
+    canvas.drawCircle(center, maxR * 0.022, centerDotPaint);
+  }
+
+  @override
+  bool shouldRepaint(_LotusPainter old) => old.rotation != rotation;
+}
+
+// ─────────────────────────────────────────────
+// WIDGET BOTTONE DURATA
+// ─────────────────────────────────────────────
 class _DurationButton extends StatelessWidget {
   final int minutes;
   final VoidCallback onTap;
-  const _DurationButton({super.key, required this.minutes, required this.onTap});
+  const _DurationButton(
+      {super.key, required this.minutes, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -454,8 +607,8 @@ class _DurationButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.09),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-                color: Colors.white.withOpacity(0.12), width: 1),
+            border:
+                Border.all(color: Colors.white.withOpacity(0.12), width: 1),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -480,7 +633,9 @@ class _DurationButton extends StatelessWidget {
   }
 }
 
-// ── widget bottone reset ──
+// ─────────────────────────────────────────────
+// WIDGET BOTTONE RESET
+// ─────────────────────────────────────────────
 class _ResetButton extends StatelessWidget {
   final VoidCallback onTap;
   const _ResetButton({super.key, required this.onTap});
@@ -496,8 +651,8 @@ class _ResetButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.05),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-                color: Colors.white.withOpacity(0.10), width: 1),
+            border:
+                Border.all(color: Colors.white.withOpacity(0.10), width: 1),
           ),
           child: Center(
             child: Text(
@@ -516,7 +671,9 @@ class _ResetButton extends StatelessWidget {
   }
 }
 
-// ── painter cerchio ──
+// ─────────────────────────────────────────────
+// PAINTER CERCHIO TIMER
+// ─────────────────────────────────────────────
 class _SilenceRingPainter extends CustomPainter {
   final double progress;
   final double pulse;
@@ -525,10 +682,8 @@ class _SilenceRingPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    // stesso raggio proporzionale di Void (lascia margine 16px da ogni lato)
     final radius = math.min(size.width, size.height) / 2 - 16;
 
-    // glow pulsante
     if (pulse > 0) {
       final glowPaint = Paint()
         ..color = Colors.white.withOpacity(0.03 * pulse)
@@ -538,7 +693,6 @@ class _SilenceRingPainter extends CustomPainter {
       canvas.drawCircle(center, radius, glowPaint);
     }
 
-    // traccia di sfondo
     final trackPaint = Paint()
       ..color = Colors.white.withOpacity(0.07)
       ..style = PaintingStyle.stroke
@@ -546,7 +700,6 @@ class _SilenceRingPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     canvas.drawCircle(center, radius, trackPaint);
 
-    // arco progresso + dot
     if (progress > 0) {
       final progressPaint = Paint()
         ..color = Colors.white.withOpacity(0.55)

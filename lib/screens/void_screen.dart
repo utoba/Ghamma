@@ -8,6 +8,57 @@ import '../main.dart';
 import 'info_screen.dart';
 import 'package:http/http.dart' as http;
 
+bool _headphoneWarningShown = false;
+bool _brainwavePickerShown = false;
+
+// ── Struttura dati brainwave ──
+class _BrainwaveType {
+  final String name;
+  final String range;
+  final String description;
+  final String prefix; // prefisso file sul server: void1_, void2_, ecc.
+
+  const _BrainwaveType({
+    required this.name,
+    required this.range,
+    required this.description,
+    required this.prefix,
+  });
+}
+
+const List<_BrainwaveType> _brainwaves = [
+  _BrainwaveType(
+    name: 'DELTA',
+    range: '0.5–4 Hz',
+    description: 'Deep sleep · Recovery',
+    prefix: 'void1_',
+  ),
+  _BrainwaveType(
+    name: 'THETA',
+    range: '4–8 Hz',
+    description: 'Deep meditation · Creativity',
+    prefix: 'void2_',
+  ),
+  _BrainwaveType(
+    name: 'ALPHA',
+    range: '8–13 Hz',
+    description: 'Relaxed focus · Calm alertness',
+    prefix: 'void3_',
+  ),
+  _BrainwaveType(
+    name: 'BETA',
+    range: '13–30 Hz',
+    description: 'Active attention · Concentration',
+    prefix: 'void4_',
+  ),
+  _BrainwaveType(
+    name: 'GAMMA',
+    range: '30–100 Hz',
+    description: 'Intense focus · Memory (40 Hz)',
+    prefix: 'void5_',
+  ),
+];
+
 class VoidScreen extends StatefulWidget {
   const VoidScreen({super.key});
 
@@ -20,17 +71,8 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
   final AudioPlayer _player = AudioPlayer();
   final AudioPlayer _bellPlayer = AudioPlayer();
 
-  static const List<String> _voidTracks = [
-    'https://www.eoni.cloud/ANANDA/AUDIO/VOID/void1_1.mp3',
-    'https://www.eoni.cloud/ANANDA/AUDIO/VOID/void1_2.mp3',
-    'https://www.eoni.cloud/ANANDA/AUDIO/VOID/void1_3.mp3',
-    'https://www.eoni.cloud/ANANDA/AUDIO/VOID/void1_4.mp3',
-    'https://www.eoni.cloud/ANANDA/AUDIO/VOID/void1_5.mp3',
-    'https://www.eoni.cloud/ANANDA/AUDIO/VOID/void1_6.mp3',
-  ];
-
-  static const String _bellUrl =
-      'https://www.eoni.cloud/ANANDA/AUDIO/BELL/bell_ananda1.mp3';
+  static const String _bellAsset = 'assets/audio/bell1.aac';
+  static const String _voidBaseUrl = 'https://www.eoni.cloud/ANANDA/AUDIO/VOID/';
 
   late AnimationController _lissajousController;
   late AnimationController _starController;
@@ -39,7 +81,9 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
   int _selectedMinutes = 20;
   int _remainingSeconds = 0;
   bool _showDurationPicker = false;
+  bool _showBrainwavePicker = false;
   bool _isFadingOut = false;
+  int _selectedBrainwaveIndex = 0; // default: DELTA
 
   double _amplitude = 0.0;
   Timer? _fadeTicker;
@@ -53,6 +97,8 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
   final List<int> _minuteOptions = [
     5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60
   ];
+
+  _BrainwaveType get _currentBrainwave => _brainwaves[_selectedBrainwaveIndex];
 
   @override
   void initState() {
@@ -71,13 +117,80 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
     )..repeat();
 
     _initForegroundTask();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onScreenReady());
+  }
+
+  Future<void> _onScreenReady() async {
+    await _showHeadphoneWarning();
+    if (!mounted) return;
+    if (!_brainwavePickerShown) {
+      _brainwavePickerShown = true;
+      setState(() => _showBrainwavePicker = true);
+    }
+  }
+
+  Future<void> _showHeadphoneWarning() async {
+    if (_headphoneWarningShown) return;
+    _headphoneWarningShown = true;
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1E18),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Colors.white.withOpacity(0.10)),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.headphones_outlined,
+                color: Colors.white.withOpacity(0.75), size: 22),
+            const SizedBox(width: 12),
+            Text(
+              'Use headphones',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.85),
+                fontSize: 16,
+                fontWeight: FontWeight.w300,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Binaural beats require stereo headphones to work correctly. Speakers will not produce the effect.',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.50),
+            fontSize: 14,
+            fontWeight: FontWeight.w300,
+            height: 1.6,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'GOT IT',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.65),
+                letterSpacing: 2,
+                fontWeight: FontWeight.w400,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _initForegroundTask() {
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
-        channelId: 'ananda_meditation',
-        channelName: 'Ananda Meditation',
+        channelId: 'ghamma_meditation',
+        channelName: 'GHAMMA Meditation',
         channelDescription: 'Keeps audio running during meditation',
         channelImportance: NotificationChannelImportance.LOW,
         priority: NotificationPriority.LOW,
@@ -98,7 +211,7 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
     if (await FlutterForegroundTask.isRunningService) return;
     await FlutterForegroundTask.startService(
       serviceId: 256,
-      notificationTitle: 'Ananda — meditazione attiva',
+      notificationTitle: 'GHAMMA — meditazione attiva',
       notificationText: 'Tocca per tornare alla sessione',
     );
   }
@@ -147,7 +260,7 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
       setState(() => _remainingSeconds = remaining);
 
       FlutterForegroundTask.updateService(
-        notificationTitle: 'Ananda',
+        notificationTitle: 'GHAMMA · ${_currentBrainwave.name}',
         notificationText: _formatTime(remaining),
       );
 
@@ -160,18 +273,29 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
     });
   }
 
-  Future<List<String>> _fetchTracks(String folderUrl) async {
-    final response = await http.get(Uri.parse(folderUrl));
+  Future<List<String>> _fetchTracksForBrainwave(_BrainwaveType bw) async {
+    final response = await http.get(Uri.parse(_voidBaseUrl));
     if (response.statusCode != 200) return [];
     final regExp = RegExp(r'href="([^"]+\.mp3)"', caseSensitive: false);
     final matches = regExp.allMatches(response.body);
-    return matches.map((m) => folderUrl + m.group(1)!).toList();
+    final all = matches.map((m) => m.group(1)!).toList();
+    // filtra per prefisso della brainwave selezionata
+    final filtered = all
+        .where((name) => name.toLowerCase().startsWith(bw.prefix.toLowerCase()))
+        .map((name) => _voidBaseUrl + name)
+        .toList();
+    // fallback: se non ci sono tracce per questa BW, usa void1_
+    if (filtered.isEmpty) {
+      return all
+          .where((name) => name.toLowerCase().startsWith('void1_'))
+          .map((name) => _voidBaseUrl + name)
+          .toList();
+    }
+    return filtered;
   }
 
   Future<void> _startAudio() async {
-    final tracks = await _fetchTracks(
-      'https://www.eoni.cloud/ANANDA/AUDIO/VOID/',
-    );
+    final tracks = await _fetchTracksForBrainwave(_currentBrainwave);
     if (tracks.isEmpty) return;
     tracks.shuffle(Random());
     final playlist = ConcatenatingAudioSource(
@@ -184,15 +308,17 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _playBell() async {
-    await _bellPlayer.setUrl(_bellUrl);
-    await _bellPlayer.play();
+    try {
+      await _bellPlayer.setAsset(_bellAsset);
+      await _bellPlayer.seek(Duration.zero);
+      await _bellPlayer.play();
+    } catch (_) {}
   }
 
   void _startFadeOut() {
     _isFadingOut = true;
     const totalSteps = _fadeOutSeconds;
     int step = 0;
-    // fade out audio
     Timer.periodic(const Duration(seconds: 1), (timer) {
       step++;
       final volume = 1.0 - (step / totalSteps);
@@ -205,7 +331,6 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
         _endSession();
       }
     });
-    // fade out animazione
     _fadeOutAnimation();
   }
 
@@ -228,21 +353,37 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
     if (_isPlaying) {
       _ticker?.cancel();
       _fadeTicker?.cancel();
-      _fadeOutAnimation(onComplete: () {
-        _player.stop();
-        _player.setVolume(1.0);
-        _lissajousController.stop();
-        _stopForegroundTask();
-        WakelockPlus.disable();
-        setState(() {
-          _isPlaying = false;
-          _isFadingOut = false;
-          _remainingSeconds = _selectedMinutes * 60;
-        });
+      _isFadingOut = true;
+      const fadeDurationMs = 2000; // 3 secondi totali
+      const tickMs = 50;           // tick ogni 50ms = smooth
+      const totalTicks = fadeDurationMs ~/ tickMs;
+      int tick = 0;
+      Timer.periodic(const Duration(milliseconds: tickMs), (timer) {
+        tick++;
+        final volume = 1.0 - (tick / totalTicks);
+        _player.setVolume(volume.clamp(0.0, 1.0));
+        if (tick >= totalTicks) {
+          timer.cancel();
+          _player.stop();
+          _player.setVolume(1.0);
+          _lissajousController.stop();
+          _stopForegroundTask();
+          WakelockPlus.disable();
+          if (mounted) {
+            setState(() {
+              _isPlaying = false;
+              _isFadingOut = false;
+              _remainingSeconds = _selectedMinutes * 60;
+            });
+          }
+        }
       });
+      _fadeOutAnimation();
     } else {
       setState(() {
         _isPlaying = true;
+        _showBrainwavePicker = false;
+        _showDurationPicker = false;
         _remainingSeconds = _selectedMinutes * 60;
       });
       _lissajousController.repeat();
@@ -271,6 +412,14 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
       _isPlaying = false;
       _isFadingOut = false;
       _amplitude = 0.0;
+    });
+  }
+
+  void _setBrainwave(int index) {
+    if (_isPlaying) return; // non cambiare durante la sessione
+    setState(() {
+      _selectedBrainwaveIndex = index;
+      _showBrainwavePicker = false;
     });
   }
 
@@ -308,6 +457,8 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
         ? ((_totalSeconds - _remainingSeconds) / _totalSeconds).clamp(0.0, 1.0)
         : 0.0;
 
+    final bw = _currentBrainwave;
+
     return ScrollConfiguration(
       behavior: const ScrollBehavior().copyWith(scrollbars: false),
       child: Scaffold(
@@ -339,8 +490,11 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
             // ── contenuto ──
             GestureDetector(
               onTap: () {
-                if (_showDurationPicker) {
-                  setState(() => _showDurationPicker = false);
+                if (_showDurationPicker || _showBrainwavePicker) {
+                  setState(() {
+                    _showDurationPicker = false;
+                    _showBrainwavePicker = false;
+                  });
                 }
               },
               child: SafeArea(
@@ -364,6 +518,7 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                                 padding: const EdgeInsets.all(24),
                                 child: Column(
                                   children: [
+                                    // ── vectorscope + timer ring ──
                                     Expanded(
                                       child: AnimatedBuilder(
                                         animation: _lissajousController,
@@ -391,7 +546,10 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                                         ),
                                       ),
                                     ),
+
                                     const SizedBox(height: 16),
+
+                                    // ── VOID · Pure Tones ──
                                     Text(
                                       'VOID',
                                       style: TextStyle(
@@ -412,6 +570,8 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                                       ),
                                     ),
                                     const SizedBox(height: 8),
+
+                                    // ── countdown ──
                                     Text(
                                       _formatTime(_remainingSeconds),
                                       style: const TextStyle(
@@ -421,13 +581,71 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                                         letterSpacing: 6,
                                       ),
                                     ),
-                                    const SizedBox(height: 24),
+
+                                    const SizedBox(height: 16),
+
+                                    // ── bottone brainwave ──
+                                    GestureDetector(
+                                      onTap: _isPlaying ? null : () => setState(() {
+                                        _showBrainwavePicker = !_showBrainwavePicker;
+                                        _showDurationPicker = false;
+                                      }),
+                                      child: Container(
+                                        height: 44,
+                                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.07),
+                                          borderRadius: BorderRadius.circular(14),
+                                          border: Border.all(
+                                            color: Colors.white.withOpacity(0.10),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              bw.name,
+                                              style: TextStyle(
+                                                color: Colors.white.withOpacity(0.75),
+                                                fontSize: 13,
+                                                letterSpacing: 3,
+                                                fontWeight: FontWeight.w300,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Container(
+                                              width: 1,
+                                              height: 14,
+                                              color: Colors.white.withOpacity(0.15),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Text(
+                                              bw.range,
+                                              style: TextStyle(
+                                                color: Colors.white.withOpacity(0.40),
+                                                fontSize: 12,
+                                                letterSpacing: 1.5,
+                                                fontWeight: FontWeight.w300,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 16),
+
+                                    // ── duration + start ──
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
                                         GestureDetector(
-                                          onTap: () => setState(() =>
-                                              _showDurationPicker = !_showDurationPicker),
+                                          onTap: () => setState(() {
+                                            _showDurationPicker = !_showDurationPicker;
+                                            _showBrainwavePicker = false;
+                                          }),
                                           child: SizedBox(
                                             width: 130,
                                             height: 48,
@@ -505,6 +723,7 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                       ],
                     ),
 
+                    // ── tasto X ──
                     Positioned(
                       top: 20, left: 35,
                       child: GestureDetector(
@@ -523,6 +742,8 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
+
+                    // ── tasto info ──
                     Positioned(
                       top: 20, right: 35,
                       child: GestureDetector(
@@ -561,6 +782,118 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                       ),
                     ),
 
+                    // ── picker brainwave ──
+                    if (_showBrainwavePicker)
+                      Positioned(
+                        bottom: 100, left: 24, right: 24,
+                        child: GestureDetector(
+                          onTap: () {},
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1A1E18).withOpacity(0.97),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.10), width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.60),
+                                  blurRadius: 28,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 18, horizontal: 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: _brainwaves.asMap().entries.map((entry) {
+                                final i = entry.key;
+                                final b = entry.value;
+                                final isSelected = i == _selectedBrainwaveIndex;
+                                return GestureDetector(
+                                  onTap: () => _setBrainwave(i),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? const Color.fromRGBO(30, 200, 80, 0.12)
+                                          : Colors.white.withOpacity(0.04),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? const Color.fromRGBO(30, 200, 80, 0.45)
+                                            : Colors.white.withOpacity(0.07),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        // nome + range
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              b.name,
+                                              style: TextStyle(
+                                                color: isSelected
+                                                    ? const Color.fromRGBO(30, 200, 80, 1)
+                                                    : Colors.white.withOpacity(0.70),
+                                                fontSize: 13,
+                                                letterSpacing: 2.5,
+                                                fontWeight: isSelected
+                                                    ? FontWeight.w400
+                                                    : FontWeight.w300,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              b.range,
+                                              style: TextStyle(
+                                                color: isSelected
+                                                    ? const Color.fromRGBO(30, 200, 80, 0.65)
+                                                    : Colors.white.withOpacity(0.30),
+                                                fontSize: 11,
+                                                letterSpacing: 1.2,
+                                                fontWeight: FontWeight.w300,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(width: 16),
+                                        // separatore
+                                        Container(
+                                          width: 1,
+                                          height: 28,
+                                          color: Colors.white.withOpacity(0.08),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        // descrizione
+                                        Expanded(
+                                          child: Text(
+                                            b.description,
+                                            style: TextStyle(
+                                              color: Colors.white.withOpacity(0.35),
+                                              fontSize: 12,
+                                              letterSpacing: 0.5,
+                                              fontWeight: FontWeight.w300,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    // ── picker duration ──
                     if (_showDurationPicker)
                       Positioned(
                         bottom: 100, left: 24, right: 24,

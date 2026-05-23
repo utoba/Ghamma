@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import '../logo_painter.dart';
 
 class SilenceScreen extends StatefulWidget {
   const SilenceScreen({super.key});
@@ -20,8 +21,7 @@ class _SilenceScreenState extends State<SilenceScreen>
   bool _showDurationPicker = false;
   Timer? _timer;
   final AudioPlayer _bellPlayer = AudioPlayer();
-  static const String _bellUrl =
-      'https://www.eoni.cloud/ANANDA/AUDIO/BELL/bell_ananda1.mp3';
+  static const String _bellAsset = 'assets/audio/bell1.aac';
   late AnimationController _pulseController;
   late AnimationController _lotusController;
 
@@ -52,11 +52,11 @@ class _SilenceScreenState extends State<SilenceScreen>
   }
 
   Future<void> _playBell() async {
-    try {
-      await _bellPlayer.setUrl(_bellUrl);
-      await _bellPlayer.seek(Duration.zero);
-      await _bellPlayer.play();
-    } catch (_) {}
+  try {
+    await _bellPlayer.setAsset(_bellAsset);
+    await _bellPlayer.seek(Duration.zero);
+    await _bellPlayer.play();
+  } catch (_) {}
   }
 
   void _startStop() {
@@ -154,12 +154,15 @@ class _SilenceScreenState extends State<SilenceScreen>
             ),
 
             // ── loto di sfondo, centrato, lentamente rotante ──
+            // ── loto di sfondo, centrato, lentamente rotante ──
             Positioned.fill(
               child: AnimatedBuilder(
                 animation: _lotusController,
-                builder: (_, __) => CustomPaint(
-                  painter: _LotusPainter(
+                builder: (_, __) => Center(
+                  child: GhammaLogo(
+                    size: MediaQuery.of(context).size.shortestSide * 1.2,
                     rotation: _lotusController.value * 2 * math.pi,
+                    opacity: 0.25,
                   ),
                 ),
               ),
@@ -433,158 +436,6 @@ class _SilenceScreenState extends State<SilenceScreen>
       ),
     );
   }
-}
-
-// ─────────────────────────────────────────────
-// LOTUS PAINTER — sfondo + potenziale logo
-// ─────────────────────────────────────────────
-class _LotusPainter extends CustomPainter {
-  final double rotation;
-  const _LotusPainter({required this.rotation});
-
-  // Disegna un petalo a forma di mandorla centrato nell'origine,
-  // puntato verso l'alto, poi ruotato di [angle] radianti.
-  void _drawPetal(
-    Canvas canvas,
-    Offset center,
-    double angle,
-    double length,
-    double width,
-    Paint fillPaint,
-    Paint strokePaint,
-  ) {
-    final path = Path();
-    // Il petalo è una curva bezier simmetrica: parte dal centro,
-    // sale fino a [length] verso l'alto, tornando al centro.
-    // Usiamo coordinate locali con y verso l'alto = -y in Flutter.
-    final cp1x = width;
-    final cp1y = -length * 0.45;
-    final cp2x = width * 0.5;
-    final cp2y = -length * 0.85;
-    final tipX = 0.0;
-    final tipY = -length;
-    final cp3x = -width * 0.5;
-    final cp3y = -length * 0.85;
-    final cp4x = -width;
-    final cp4y = -length * 0.45;
-
-    path.moveTo(0, 0);
-    path.cubicTo(cp1x, cp1y, cp2x, cp2y, tipX, tipY);
-    path.cubicTo(cp3x, cp3y, cp4x, cp4y, 0, 0);
-    path.close();
-
-    canvas.save();
-    canvas.translate(center.dx, center.dy);
-    canvas.rotate(angle);
-    canvas.drawPath(path, fillPaint);
-    canvas.drawPath(path, strokePaint);
-    canvas.restore();
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-
-    // Le dimensioni del loto scalano con lo schermo (60% del lato minore)
-    final maxR = math.min(size.width, size.height) * 0.60;
-
-    // ── Paint comuni ──
-    final fillOuter = Paint()
-      ..color = Colors.white.withOpacity(0.025)
-      ..style = PaintingStyle.fill;
-    final strokeOuter = Paint()
-      ..color = Colors.white.withOpacity(0.09)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.7;
-
-    final fillMid = Paint()
-      ..color = Colors.white.withOpacity(0.030)
-      ..style = PaintingStyle.fill;
-    final strokeMid = Paint()
-      ..color = Colors.white.withOpacity(0.10)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.7;
-
-    final fillInner = Paint()
-      ..color = Colors.white.withOpacity(0.035)
-      ..style = PaintingStyle.fill;
-    final strokeInner = Paint()
-      ..color = Colors.white.withOpacity(0.13)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8;
-
-    final centerRingPaint = Paint()
-      ..color = Colors.white.withOpacity(0.10)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.7;
-
-    final centerDotPaint = Paint()
-      ..color = Colors.white.withOpacity(0.18)
-      ..style = PaintingStyle.fill;
-
-    final stamenPaint = Paint()
-      ..color = Colors.white.withOpacity(0.07)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.6;
-
-    const petalCount = 8;
-    const twoPi = math.pi * 2;
-
-    // ── Strato esterno: 8 petali principali ──
-    for (int i = 0; i < petalCount; i++) {
-      final angle = rotation + (twoPi / petalCount) * i;
-      _drawPetal(canvas, center, angle, maxR, maxR * 0.18,
-          fillOuter, strokeOuter);
-    }
-
-    // ── Strato esterno interleaved: 8 petali più corti, sfasati di 22.5° ──
-    for (int i = 0; i < petalCount; i++) {
-      final angle = rotation + (twoPi / petalCount) * i + (twoPi / 16);
-      _drawPetal(canvas, center, angle, maxR * 0.80, maxR * 0.14,
-          fillOuter, strokeOuter);
-    }
-
-    // ── Strato medio: 8 petali sfasati di 22.5° ──
-    for (int i = 0; i < petalCount; i++) {
-      final angle = rotation + (twoPi / petalCount) * i + (twoPi / 16);
-      _drawPetal(canvas, center, angle, maxR * 0.62, maxR * 0.13,
-          fillMid, strokeMid);
-    }
-
-    // ── Strato interno: 8 petali allineati ai principali ──
-    for (int i = 0; i < petalCount; i++) {
-      final angle = rotation + (twoPi / petalCount) * i;
-      _drawPetal(canvas, center, angle, maxR * 0.38, maxR * 0.10,
-          fillInner, strokeInner);
-    }
-
-    // ── Cerchi concentrici al centro ──
-    for (final r in [maxR * 0.14, maxR * 0.10, maxR * 0.06]) {
-      canvas.drawCircle(center, r, centerRingPaint);
-    }
-
-    // ── Stami: 8 segmenti radiali brevi ──
-    for (int i = 0; i < petalCount; i++) {
-      final angle = rotation + (twoPi / petalCount) * i;
-      final r1 = maxR * 0.06;
-      final r2 = maxR * 0.13;
-      final p1 = Offset(
-        center.dx + r1 * math.sin(angle),
-        center.dy - r1 * math.cos(angle),
-      );
-      final p2 = Offset(
-        center.dx + r2 * math.sin(angle),
-        center.dy - r2 * math.cos(angle),
-      );
-      canvas.drawLine(p1, p2, stamenPaint);
-    }
-
-    // ── Punto centrale ──
-    canvas.drawCircle(center, maxR * 0.022, centerDotPaint);
-  }
-
-  @override
-  bool shouldRepaint(_LotusPainter old) => old.rotation != rotation;
 }
 
 // ─────────────────────────────────────────────

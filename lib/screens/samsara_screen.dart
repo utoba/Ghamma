@@ -186,7 +186,7 @@ class _SamsaraScreenState extends State<SamsaraScreen>
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
                   colors: [
-                    Color(0xFF1A1E18),
+                    Color(0xFF1A2035),
                     Color(0xFF1A1E18),
                     Color(0x5973521F),
                   ],

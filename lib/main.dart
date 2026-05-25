@@ -3,11 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'menu_screen.dart';
 import 'screens/splash_screen.dart';
-
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'meditation_task_handler.dart';
+import 'export_logo.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  FlutterForegroundTask.initCommunicationPort();
   runApp(const AnandaApp());
 }
 
@@ -22,7 +25,7 @@ class AnandaApp extends StatelessWidget {
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF1A1E18),
       ),
-      home: const SplashScreen(),
+      home: const ExportLogoScreen(),
     );
   }
 }

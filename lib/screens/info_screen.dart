@@ -79,17 +79,6 @@ class InfoScreen extends StatelessWidget {
                         'These pure tones are the result of hours of personal meditation. They were recorded during my own sessions.',
                       ),
                       _divider(),
-                      _paragraph(
-                        "Even if I still believe vipassana meditation — which doesn't use any external input other than the pure sensory experience of the present moment — is the deepest and most beneficial form of meditation, I think it is worth exploring the relationships between different levels of vibration (sound, mind, the reality around us) and our response to them."
-                      ),
-                      _divider(),
-                      _paragraph(
-                        'I also remember that as a beginner, all the tools that allowed me to relax and focus — music above all — were essential to my progress on the spiritual path.',
-                      ),
-                      _divider(),
-                      _paragraph(
-                        'I hope this app can be equally useful to those who are just beginning, and to those already on the path who want to experiment with sound vibrations and psychophysical states.',
-                      ),
                       const SizedBox(height: 48),
                     ],
                   ),

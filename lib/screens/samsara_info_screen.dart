@@ -49,7 +49,7 @@ class SamsaraInfoScreen extends StatelessWidget {
                     ),
                     const Spacer(),
                     Text(
-                      'Ambient Soundscapes',
+                      'AMBIENT SOUNDSCAPES',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.55),
                         fontSize: 18,
@@ -72,16 +72,13 @@ class SamsaraInfoScreen extends StatelessWidget {
                     children: [
                       const SizedBox(height: 8),
                       _paragraph(
-                        'This section contains a constantly updated selection of audio material that I hope can offer support and assistance to states of relaxation, focus, and insight, or serve as a sonic background for work, study, or moments of socialization.',
+                        'This section contains a constantly updated selection of audio material that can offer support and assistance to states of relaxation, focus, and insight, or serve as a sonic background for work, study, or moments of socialization.',
                       ),
                       _divider(),
                       _paragraph(
-                        'Some of the tracks in this section are part of the musical project "eoni" that represents my artistic evolution towards more meditative sonic forms and freer compositional processes. For more information, visit https://eoni.bandcamp.com/ and https://www.eoni.cloud/',
+                        'Tracks are created by a collective of artists revolving around idiom studio, particularly the eoni project. For more info and to support the artists: www.eoni.cloud and www.idiomstudio.net',
                       ),
                       _divider(),
-                      _paragraph(
-                        "Other tracks have been composed and mixed specifically for this section."
-                      ),
                       const SizedBox(height: 48),
                     ],
                   ),

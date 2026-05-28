@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'screens/void_screen.dart';
-import 'screens/samsara_screen.dart';
+import 'navigator_screen.dart';
 import 'screens/about_screen.dart';
-import 'screens/silence_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -91,23 +89,17 @@ class _MenuScreenState extends State<MenuScreen>
     }
   }
 
-  PageRouteBuilder _slideRoute(Widget page) {
-    return PageRouteBuilder(
-      transitionDuration: const Duration(milliseconds: 1200),
-      pageBuilder: (_, __, ___) => page,
-      transitionsBuilder: (_, animation, __, child) {
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutQuart,
-        );
-        return ScaleTransition(
-          scale: Tween<double>(begin: 0.1, end: 1.0).animate(curved),
-          child: FadeTransition(
-            opacity: Tween<double>(begin: 0.0, end: 1.0).animate(curved),
-            child: child,
-          ),
-        );
-      },
+  // Naviga al NavigatorScreen con l'indice corretto
+  void _goToScreen(int index) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 600),
+        pageBuilder: (_, __, ___) => NavigatorScreen(initialIndex: index),
+        transitionsBuilder: (_, animation, __, child) {
+          final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+          return FadeTransition(opacity: curved, child: child);
+        },
+      ),
     );
   }
 
@@ -126,11 +118,7 @@ class _MenuScreenState extends State<MenuScreen>
               gradient: LinearGradient(
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
-                colors: [
-                  Color(0xFF1A2035),
-                  Color(0xFF1A1E18),
-                  Color(0x5973521F),
-                ],
+                colors: [Color(0xFF1A2035), Color(0xFF1A1E18), Color(0x5973521F)],
                 stops: [0.0, 0.45, 1.0],
               ),
             ),
@@ -143,7 +131,7 @@ class _MenuScreenState extends State<MenuScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 8),
 
                   // Lineetta swipe — apre about
                   GestureDetector(
@@ -155,8 +143,7 @@ class _MenuScreenState extends State<MenuScreen>
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       child: Center(
                         child: Container(
-                          width: 36,
-                          height: 4,
+                          width: 36, height: 4,
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.18),
                             borderRadius: BorderRadius.circular(2),
@@ -171,12 +158,7 @@ class _MenuScreenState extends State<MenuScreen>
                   const Center(
                     child: Text(
                       'G H A M M A',
-                      style: TextStyle(
-                        color: Color(0xFFCCCCCC),
-                        fontSize: 34,
-                        fontWeight: FontWeight.w200,
-                        letterSpacing: 12,
-                      ),
+                      style: TextStyle(color: Color(0xFFCCCCCC), fontSize: 34, fontWeight: FontWeight.w200, letterSpacing: 12),
                     ),
                   ),
 
@@ -191,12 +173,7 @@ class _MenuScreenState extends State<MenuScreen>
                   Center(
                     child: Text(
                       'S E L E C T   Y O U R   P A T H',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.75),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w300,
-                        letterSpacing: 4,
-                      ),
+                      style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 15, fontWeight: FontWeight.w300, letterSpacing: 4),
                     ),
                   ),
 
@@ -205,25 +182,20 @@ class _MenuScreenState extends State<MenuScreen>
                   _MenuCard(
                     title: 'V O I D',
                     subtitle: 'Pure Tones',
-                    onTap: () => Navigator.push(context, _slideRoute(const VoidScreen())),
+                    onTap: () => _goToScreen(0),
                   ),
-
                   const SizedBox(height: 27),
-
                   _MenuCard(
                     title: 'S A M S A R A',
                     subtitle: 'Ambient Soundscapes',
-                    onTap: () => Navigator.push(context, _slideRoute(const SamsaraScreen())),
+                    onTap: () => _goToScreen(1),
                   ),
-
                   const SizedBox(height: 27),
-
                   _MenuCard(
                     title: 'S I L E N C E',
                     subtitle: 'Meditation Timer',
-                    onTap: () => Navigator.push(context, _slideRoute(const SilenceScreen())),
+                    onTap: () => _goToScreen(2),
                   ),
-
                   const SizedBox(height: 48),
                 ],
               ),
@@ -264,32 +236,17 @@ class _MenuScreenState extends State<MenuScreen>
                       bottomLeft: Radius.circular(28),
                       bottomRight: Radius.circular(28),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.5),
-                        blurRadius: 32,
-                        offset: const Offset(0, 12),
-                      ),
-                    ],
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 32, offset: const Offset(0, 12))],
                   ),
                   child: SafeArea(
                     bottom: false,
                     child: Column(
                       children: [
                         Expanded(
-                          child: AboutScreen(
-                            scrollController: _aboutScrollController,
-                          ),
+                          child: AboutScreen(scrollController: _aboutScrollController),
                         ),
                         const SizedBox(height: 16),
-                        Container(
-                          width: 36,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.20),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
+                        Container(width: 36, height: 4, decoration: BoxDecoration(color: Colors.white.withOpacity(0.20), borderRadius: BorderRadius.circular(2))),
                         const SizedBox(height: 20),
                       ],
                     ),
@@ -312,11 +269,7 @@ class _MenuCard extends StatefulWidget {
   final String subtitle;
   final VoidCallback onTap;
 
-  const _MenuCard({
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
+  const _MenuCard({required this.title, required this.subtitle, required this.onTap});
 
   @override
   State<_MenuCard> createState() => _MenuCardState();
@@ -329,49 +282,23 @@ class _MenuCardState extends State<_MenuCard> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
+      onTapUp: (_) { setState(() => _pressed = false); widget.onTap(); },
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
         decoration: BoxDecoration(
-          color: _pressed
-              ? Colors.white.withOpacity(0.12)
-              : Colors.white.withOpacity(0.06),
+          color: _pressed ? Colors.white.withOpacity(0.12) : Colors.white.withOpacity(0.06),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: _pressed
-                ? Colors.white.withOpacity(0.20)
-                : Colors.white.withOpacity(0.08),
-            width: 1,
-          ),
+          border: Border.all(color: _pressed ? Colors.white.withOpacity(0.20) : Colors.white.withOpacity(0.08), width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              widget.title,
-              style: const TextStyle(
-                color: Color(0xFFCCCCCC),
-                fontSize: 25,
-                fontWeight: FontWeight.w200,
-                letterSpacing: 6,
-              ),
-            ),
+            Text(widget.title, style: const TextStyle(color: Color(0xFFCCCCCC), fontSize: 25, fontWeight: FontWeight.w200, letterSpacing: 6)),
             const SizedBox(height: 10),
-            Text(
-              widget.subtitle,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.4),
-                fontSize: 15,
-                fontWeight: FontWeight.w300,
-                letterSpacing: 2,
-              ),
-            ),
+            Text(widget.subtitle, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 15, fontWeight: FontWeight.w300, letterSpacing: 2)),
           ],
         ),
       ),

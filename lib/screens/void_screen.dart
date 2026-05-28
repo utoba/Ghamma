@@ -33,7 +33,17 @@ const List<_BrainwaveType> _brainwaves = [
 ];
 
 class VoidScreen extends StatefulWidget {
-  const VoidScreen({super.key});
+  // Callback opzionali dal NavigatorScreen
+  // Se null, lo screen funziona standalone (compatibilità)
+  final VoidCallback? onOpenInfo;
+  final void Function(VoidCallback)? onRegisterInfo;
+
+  const VoidScreen({
+    super.key,
+    this.onOpenInfo,
+    this.onRegisterInfo,
+  });
+
   @override
   State<VoidScreen> createState() => _VoidScreenState();
 }
@@ -83,7 +93,24 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
     )..repeat();
 
     _initForegroundTask();
+
+    // Registra il callback per aprire info (swipe down dal NavigatorScreen)
+    widget.onRegisterInfo?.call(_openInfo);
+
     WidgetsBinding.instance.addPostFrameCallback((_) => _onScreenReady());
+  }
+
+  void _openInfo() {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 480),
+      pageBuilder: (_, __, ___) => const InfoScreen(),
+      transitionBuilder: (_, animation, __, child) {
+        return FadeTransition(opacity: animation, child: child);
+      },
+    );
   }
 
   Future<void> _onScreenReady() async {
@@ -153,15 +180,10 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
       await FlutterForegroundTask.stopService();
       await Future.delayed(const Duration(milliseconds: 300));
     }
-
     final endTimeMs = DateTime.now().millisecondsSinceEpoch + (_totalSeconds * 1000);
     final title = 'GHAMMA · ${_currentBrainwave.name}';
-
-    // Salva i dati PRIMA di startService — l'handler li legge in onStart
-    // senza problemi di timing (niente sendDataToTask, niente retry)
     await FlutterForegroundTask.saveData(key: 'endTime', value: endTimeMs.toString());
     await FlutterForegroundTask.saveData(key: 'title', value: title);
-
     await FlutterForegroundTask.startService(
       serviceId: 256,
       notificationTitle: title,
@@ -205,7 +227,6 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
       final elapsed = DateTime.now().difference(_sessionStartTime!).inSeconds;
       final remaining = (_totalSeconds - elapsed).clamp(0, _totalSeconds);
       setState(() => _remainingSeconds = remaining);
-
       if (remaining == _fadeOutSeconds && !_isFadingOut) _startFadeOut();
       if (remaining <= 0 && !_isFadingOut) _endSession();
     });
@@ -279,7 +300,7 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
       _ticker?.cancel();
       _fadeTicker?.cancel();
       _isFadingOut = true;
-      const totalTicks = 40; // 2000ms / 50ms
+      const totalTicks = 40;
       int tick = 0;
       Timer.periodic(const Duration(milliseconds: 50), (timer) {
         tick++;
@@ -337,16 +358,6 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
   void _setBrainwave(int index) {
     if (_isPlaying) return;
     setState(() { _selectedBrainwaveIndex = index; _showBrainwavePicker = false; });
-  }
-
-  void _closeScreen() {
-    _ticker?.cancel();
-    _fadeTicker?.cancel();
-    _player.stop();
-    _bellPlayer.stop();
-    _lissajousController.stop();
-    _stopForegroundTask();
-    Navigator.pop(context);
   }
 
   String _formatTime(int s) =>
@@ -416,6 +427,17 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                                 padding: const EdgeInsets.all(24),
                                 child: Column(
                                   children: [
+                                    // drag handle — invito swipe down per info
+                                    Center(
+                                      child: Container(
+                                        width: 36, height: 4,
+                                        margin: const EdgeInsets.only(bottom: 12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.18),
+                                          borderRadius: BorderRadius.circular(2),
+                                        ),
+                                      ),
+                                    ),
                                     Expanded(
                                       child: AnimatedBuilder(
                                         animation: _lissajousController,
@@ -519,55 +541,13 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 28), // spazio per i dots
                       ],
-                    ),
-                    // Tasto X
-                    Positioned(
-                      top: 20, left: 35,
-                      child: GestureDetector(
-                        onTap: _closeScreen,
-                        child: Container(
-                          width: 36, height: 36,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.06),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
-                          ),
-                          child: Icon(Icons.close, color: Colors.white.withOpacity(0.55), size: 16),
-                        ),
-                      ),
-                    ),
-                    // Tasto info
-                    Positioned(
-                      top: 20, right: 35,
-                      child: GestureDetector(
-                        onTap: () => Navigator.push(context, PageRouteBuilder(
-                          transitionDuration: const Duration(milliseconds: 1200),
-                          pageBuilder: (_, __, ___) => const InfoScreen(),
-                          transitionsBuilder: (_, animation, __, child) {
-                            final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutQuart);
-                            return ScaleTransition(
-                              scale: Tween<double>(begin: 0.1, end: 1.0).animate(curved),
-                              child: FadeTransition(opacity: Tween<double>(begin: 0.0, end: 1.0).animate(curved), child: child),
-                            );
-                          },
-                        )),
-                        child: Container(
-                          width: 36, height: 36,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.06),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
-                          ),
-                          child: Icon(Icons.info_outline, color: Colors.white.withOpacity(0.55), size: 16),
-                        ),
-                      ),
                     ),
                     // Picker brainwave
                     if (_showBrainwavePicker)
                       Positioned(
-                        bottom: 100, left: 24, right: 24,
+                        bottom: 108, left: 24, right: 24,
                         child: GestureDetector(
                           onTap: () {},
                           child: Container(
@@ -621,7 +601,7 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                     // Picker duration
                     if (_showDurationPicker)
                       Positioned(
-                        bottom: 100, left: 24, right: 24,
+                        bottom: 108, left: 24, right: 24,
                         child: GestureDetector(
                           onTap: () {},
                           child: Container(

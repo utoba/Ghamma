@@ -7,7 +7,13 @@ import '../logo_painter.dart';
 import '../meditation_task_handler.dart';
 
 class SilenceScreen extends StatefulWidget {
-  const SilenceScreen({super.key});
+  final void Function(VoidCallback)? onRegisterInfo;
+
+  const SilenceScreen({
+    super.key,
+    this.onRegisterInfo,
+  });
+
   @override
   State<SilenceScreen> createState() => _SilenceScreenState();
 }
@@ -37,6 +43,9 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
     _pulseController = AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat(reverse: true);
     _lotusController = AnimationController(vsync: this, duration: const Duration(seconds: 120))..repeat();
     _initForegroundTask();
+
+    // Silence non ha una info screen — registra un no-op
+    // (il callback è opzionale, NavigatorScreen non chiamerà nulla)
   }
 
   void _initForegroundTask() {
@@ -62,13 +71,9 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
       await FlutterForegroundTask.stopService();
       await Future.delayed(const Duration(milliseconds: 300));
     }
-
     final endTimeMs = DateTime.now().millisecondsSinceEpoch + (_remainingSeconds * 1000);
-
-    // Salva i dati PRIMA di startService — letti dall'handler in onStart
     await FlutterForegroundTask.saveData(key: 'endTime', value: endTimeMs.toString());
     await FlutterForegroundTask.saveData(key: 'title', value: 'GHAMMA · Silence');
-
     await FlutterForegroundTask.startService(
       serviceId: 257,
       notificationTitle: 'GHAMMA · Silence',
@@ -77,9 +82,7 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
     );
   }
 
-  Future<void> _stopForegroundTask() async {
-    await FlutterForegroundTask.stopService();
-  }
+  Future<void> _stopForegroundTask() async => FlutterForegroundTask.stopService();
 
   @override
   void dispose() {
@@ -122,7 +125,6 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
       _playBell();
       _startForegroundTask();
       setState(() => _isRunning = true);
-
       _timer = Timer.periodic(const Duration(seconds: 1), (_) {
         if (_elapsedSeconds >= _totalSeconds) {
           _timer?.cancel();
@@ -268,27 +270,12 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 28), // spazio per i dots
                     ],
-                  ),
-                  Positioned(
-                    top: 20, left: 35,
-                    child: GestureDetector(
-                      onTap: () { _timer?.cancel(); _stopForegroundTask(); Navigator.pop(context); },
-                      child: Container(
-                        width: 36, height: 36,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.06),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
-                        ),
-                        child: Icon(Icons.close, color: Colors.white.withOpacity(0.55), size: 16),
-                      ),
-                    ),
                   ),
                   if (_showDurationPicker)
                     Positioned(
-                      bottom: 100, left: 24, right: 24,
+                      bottom: 108, left: 24, right: 24,
                       child: GestureDetector(
                         onTap: () {},
                         child: Container(
@@ -337,92 +324,54 @@ class _DurationButton extends StatelessWidget {
   final VoidCallback onTap;
   const _DurationButton({super.key, required this.minutes, required this.onTap});
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 130, height: 48,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.09),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.timer_outlined, color: Colors.white.withOpacity(0.65), size: 18),
-              const SizedBox(width: 8),
-              Text('$minutes min', style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 14, letterSpacing: 1.2, fontWeight: FontWeight.w300)),
-            ],
-          ),
-        ),
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: SizedBox(width: 130, height: 48,
+      child: Container(
+        decoration: BoxDecoration(color: Colors.white.withOpacity(0.09), borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.white.withOpacity(0.12), width: 1)),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(Icons.timer_outlined, color: Colors.white.withOpacity(0.65), size: 18),
+          const SizedBox(width: 8),
+          Text('$minutes min', style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 14, letterSpacing: 1.2, fontWeight: FontWeight.w300)),
+        ]),
       ),
-    );
-  }
+    ),
+  );
 }
 
 class _ResetButton extends StatelessWidget {
   final VoidCallback onTap;
   const _ResetButton({super.key, required this.onTap});
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 130, height: 48,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withOpacity(0.10), width: 1),
-          ),
-          child: Center(child: Text('RESET', style: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 12, letterSpacing: 2.5, fontWeight: FontWeight.w300))),
-        ),
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: SizedBox(width: 130, height: 48,
+      child: Container(
+        decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.white.withOpacity(0.10), width: 1)),
+        child: Center(child: Text('RESET', style: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 12, letterSpacing: 2.5, fontWeight: FontWeight.w300))),
       ),
-    );
-  }
+    ),
+  );
 }
 
 class _SilenceRingPainter extends CustomPainter {
   final double progress;
   final double pulse;
   const _SilenceRingPainter({required this.progress, required this.pulse});
-
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = math.min(size.width, size.height) / 2 - 16;
-
     if (pulse > 0) {
-      canvas.drawCircle(center, radius, Paint()
-        ..color = Colors.white.withOpacity(0.03 * pulse)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 24
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12));
+      canvas.drawCircle(center, radius, Paint()..color = Colors.white.withOpacity(0.03 * pulse)..style = PaintingStyle.stroke..strokeWidth = 24..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12));
     }
-
-    canvas.drawCircle(center, radius, Paint()
-      ..color = Colors.white.withOpacity(0.07)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5
-      ..strokeCap = StrokeCap.round);
-
+    canvas.drawCircle(center, radius, Paint()..color = Colors.white.withOpacity(0.07)..style = PaintingStyle.stroke..strokeWidth = 1.5..strokeCap = StrokeCap.round);
     if (progress > 0) {
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        -math.pi / 2, 2 * math.pi * progress, false,
-        Paint()..color = Colors.white.withOpacity(0.55)..style = PaintingStyle.stroke..strokeWidth = 1.5..strokeCap = StrokeCap.round,
-      );
+      canvas.drawArc(Rect.fromCircle(center: center, radius: radius), -math.pi / 2, 2 * math.pi * progress, false, Paint()..color = Colors.white.withOpacity(0.55)..style = PaintingStyle.stroke..strokeWidth = 1.5..strokeCap = StrokeCap.round);
       final angle = -math.pi / 2 + 2 * math.pi * progress;
-      canvas.drawCircle(
-        Offset(center.dx + radius * math.cos(angle), center.dy + radius * math.sin(angle)),
-        4,
-        Paint()..color = Colors.white.withOpacity(0.80)..style = PaintingStyle.fill,
-      );
+      canvas.drawCircle(Offset(center.dx + radius * math.cos(angle), center.dy + radius * math.sin(angle)), 4, Paint()..color = Colors.white.withOpacity(0.80)..style = PaintingStyle.fill);
     }
   }
-
   @override
   bool shouldRepaint(_SilenceRingPainter old) => old.progress != progress || old.pulse != pulse;
 }

@@ -72,3 +72,5 @@ android/key.properties
 *.jks
 android/key.properties
 *.jks
+android/key.properties
+*.jks

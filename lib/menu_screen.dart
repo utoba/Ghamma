@@ -129,9 +129,9 @@ class _MenuScreenState extends State<MenuScreen>
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly, // ← distribuisce automaticamente
                 children: [
-                  const SizedBox(height: 8),
 
                   // Lineetta swipe — apre about
                   GestureDetector(
@@ -153,50 +153,39 @@ class _MenuScreenState extends State<MenuScreen>
                     ),
                   ),
 
-                  const SizedBox(height: 20),
-
-                  const Center(
-                    child: Text(
-                      'G H A M M A',
-                      style: TextStyle(color: Color(0xFFCCCCCC), fontSize: 34, fontWeight: FontWeight.w200, letterSpacing: 12),
-                    ),
+                  // Titolo + linea + sottotitolo raggruppati
+                  Column(
+                    children: [
+                      const Text(
+                        'G H A M M A',
+                        style: TextStyle(color: Color(0xFFCCCCCC), fontSize: 34, fontWeight: FontWeight.w200, letterSpacing: 12),
+                      ),
+                      Container(
+                        height: 1,
+                        margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 16),
+                        color: Colors.white.withOpacity(0.1),
+                      ),
+                      Text(
+                        'S E L E C T   Y O U R   P A T H',
+                        style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 15, fontWeight: FontWeight.w300, letterSpacing: 4),
+                      ),
+                    ],
                   ),
 
-                  Container(
-                    height: 1,
-                    margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 16),
-                    color: Colors.white.withOpacity(0.1),
+                  // Card raggruppate
+                  Column(
+                    children: [
+                      _MenuCard(title: 'V O I D', subtitle: 'Pure Tones', onTap: () => _goToScreen(0)),
+                      const SizedBox(height: 20),
+                      _MenuCard(title: 'S A M S A R A', subtitle: 'Ambient Soundscapes', onTap: () => _goToScreen(1)),
+                      const SizedBox(height: 20),
+                      _MenuCard(title: 'S I L E N C E', subtitle: 'Meditation Timer', onTap: () => _goToScreen(2)),
+                    ],
                   ),
 
-                  const SizedBox(height: 30),
+                  // Spazio fantasma in fondo (bilancia la lineetta in cima)
+                  const SizedBox(height: 4),
 
-                  Center(
-                    child: Text(
-                      'S E L E C T   Y O U R   P A T H',
-                      style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 15, fontWeight: FontWeight.w300, letterSpacing: 4),
-                    ),
-                  ),
-
-                  const SizedBox(height: 45),
-
-                  _MenuCard(
-                    title: 'V O I D',
-                    subtitle: 'Pure Tones',
-                    onTap: () => _goToScreen(0),
-                  ),
-                  const SizedBox(height: 27),
-                  _MenuCard(
-                    title: 'S A M S A R A',
-                    subtitle: 'Ambient Soundscapes',
-                    onTap: () => _goToScreen(1),
-                  ),
-                  const SizedBox(height: 27),
-                  _MenuCard(
-                    title: 'S I L E N C E',
-                    subtitle: 'Meditation Timer',
-                    onTap: () => _goToScreen(2),
-                  ),
-                  const SizedBox(height: 48),
                 ],
               ),
             ),

@@ -34,6 +34,7 @@ dependencies:
   wakelock_plus: ^1.2.8
   flutter_foreground_task: ^8.15.1
   http: ^1.2.0
+  shared_preferences: ^2.2.2
 
 
   # The following adds the Cupertino Icons font to your application.
@@ -75,7 +76,11 @@ flutter:
 
 
   assets:
-    - assets/audio/bell1.aac
+    - assets/audio/bell2.mp3
+    - assets/audio/bell3.mp3
+    - assets/audio/bell4.mp3
+    - assets/audio/bell5.mp3
+    - assets/audio/bell6.mp3
 
   # To add assets to your application, add an assets section, like this:
   # assets:

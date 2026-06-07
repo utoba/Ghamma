@@ -53,7 +53,17 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
   final AudioPlayer _player = AudioPlayer();
   final AudioPlayer _bellPlayer = AudioPlayer();
 
-  static const String _bellAsset = 'assets/audio/bell1.aac';
+  static const List<String> _bellAssets = [
+  'assets/audio/bell2.mp3',
+  'assets/audio/bell3.mp3',
+  'assets/audio/bell4.mp3',
+  'assets/audio/bell5.mp3',
+  'assets/audio/bell6.mp3',
+  ];
+
+  String _randomBell() {
+    return _bellAssets[Random().nextInt(_bellAssets.length)];
+  }
   static const String _voidBaseUrl = 'https://www.eoni.cloud/ANANDA/AUDIO/VOID/';
   static const int _fadeOutSeconds = 20;
 
@@ -262,7 +272,7 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
 
   Future<void> _playBell() async {
     try {
-      await _bellPlayer.setAsset(_bellAsset);
+      await _bellPlayer.setAsset(_randomBell());
       await _bellPlayer.seek(Duration.zero);
       await _bellPlayer.play();
     } catch (_) {}

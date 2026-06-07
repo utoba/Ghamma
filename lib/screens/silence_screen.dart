@@ -5,6 +5,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import '../logo_painter.dart';
 import '../meditation_task_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SilenceScreen extends StatefulWidget {
   final void Function(VoidCallback)? onRegisterInfo;
@@ -20,6 +21,22 @@ class SilenceScreen extends StatefulWidget {
 
 class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateMixin {
 
+  Future<void> _loadSavedDuration() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getInt('silence_duration_minutes');
+    if (saved != null && _minuteOptions.contains(saved)) {
+      setState(() {
+        _selectedMinutes = saved;
+        _totalSeconds = saved * 60;
+      });
+    }
+  }
+
+  Future<void> _saveDuration(int minutes) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('silence_duration_minutes', minutes);
+  }
+
   int _selectedMinutes = 20;
   int _totalSeconds = 0;
   bool _isRunning = false;
@@ -27,7 +44,18 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
   bool _showDurationPicker = false;
   Timer? _timer;
   final AudioPlayer _bellPlayer = AudioPlayer();
-  static const String _bellAsset = 'assets/audio/bell1.aac';
+  static const List<String> _bellAssets = [
+  'assets/audio/bell2.mp3',
+  'assets/audio/bell3.mp3',
+  'assets/audio/bell4.mp3',
+  'assets/audio/bell5.mp3',
+  'assets/audio/bell6.mp3',
+  ];
+
+  String _randomBell() {
+  return _bellAssets[math.Random().nextInt(_bellAssets.length)];
+  }
+
   late AnimationController _pulseController;
   late AnimationController _lotusController;
 
@@ -43,6 +71,7 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
     _pulseController = AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat(reverse: true);
     _lotusController = AnimationController(vsync: this, duration: const Duration(seconds: 120))..repeat();
     _initForegroundTask();
+    _loadSavedDuration();
 
     // Silence non ha una info screen — registra un no-op
     // (il callback è opzionale, NavigatorScreen non chiamerà nulla)
@@ -95,7 +124,7 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
 
   Future<void> _playBell() async {
     try {
-      await _bellPlayer.setAsset(_bellAsset);
+      await _bellPlayer.setAsset(_randomBell());
       await _bellPlayer.seek(Duration.zero);
       await _bellPlayer.play();
     } catch (_) {}
@@ -147,6 +176,7 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
   }
 
   void _setDuration(int minutes) {
+    _saveDuration(minutes);
     _timer?.cancel();
     _stopForegroundTask();
     _elapsedSecondsAtPause = 0;

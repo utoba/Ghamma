@@ -1,16 +1,27 @@
 # Ghamma
 
-A new Flutter project.
+Ghamma is an Android meditation app built around original music — immersive ambient soundscapes composed and produced as both artistic works and tools for deep listening.
 
-## Getting Started
+**VOID** carries binaural beats, isochronic tones and bilateral beats tuned to specific brainwave frequencies. For those curious about the technical side, carrier Hz and beat Hz are always visible for every track.
 
-This project is a starting point for a Flutter application.
+**SAMSARA** is a second listening mode: a random player that draws from an ever-growing library of original ambient soundscapes — full compositions, not loops.
 
-A few resources to get you started if this is your first Flutter project:
+**SILENCE** is a dedicated meditation timer with customizable interval bells, for silent sessions or use alongside any audio you choose.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Features
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- Original binaural ambient music (VOID collection)
+- SAMSARA — random player with an expanding library of original ambient pieces
+- Meditation timer with customizable bells (SILENCE)
+- Brainwave entrainment: Delta / Theta / Alpha / Beta / Gamma
+- Carrier Hz and beat Hz displayed for every track
+- No ads, no tracking, no subscriptions
+- Value-for-value via Lightning Network
+
+## Download
+
+Available on [Zapstore](https://zapstore.dev)
+
+## Built with
+
+[Flutter](https://flutter.dev) — Android

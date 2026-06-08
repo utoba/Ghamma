@@ -26,7 +26,7 @@ class AboutScreen extends StatelessWidget {
                
                 const SizedBox(height: 16),
                 _buildParagraph(
-                  'SAMSARA:\nThis section offers a constantly updated selection of ambient tracks designed for deep contemplation and insight. Tracks are created by a collective of artists revolving around idiom studio, particularly the eoni project. For more info and to support the artists: www.eoni.cloud and www.idiomstudio.net',
+                  'SAMSARA:\nThis section offers a constantly updated selection of ambient tracks designed for deep contemplation and insight.',
                 ),
                 _buildDivider(),
                 

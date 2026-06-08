@@ -29,6 +29,8 @@ class _SamsaraScreenState extends State<SamsaraScreen>
 
   bool _isPlaying = false;
   int _elapsedSeconds = 0;
+  bool _audioStarted = false;
+  bool _seekingManually = false;
   Timer? _ticker;
   DateTime? _sessionStartTime;
 
@@ -53,7 +55,11 @@ class _SamsaraScreenState extends State<SamsaraScreen>
     });
 
     _player.currentIndexStream.listen((index) {
-      if (index == null || !_isPlaying) return;
+      if (index == null || !_isPlaying || !_audioStarted) return;
+      if (_seekingManually) {
+        _seekingManually = false;
+        return;
+      }
       _fadeOut(onComplete: _fadeIn);
     });
   }
@@ -93,6 +99,26 @@ class _SamsaraScreenState extends State<SamsaraScreen>
     });
   }
 
+  void _fadeOutAudio({VoidCallback? onComplete}) {
+    int tick = 0;
+    const totalTicks = 50;
+    Timer.periodic(const Duration(milliseconds: 30), (t) {
+      tick++;
+      _player.setVolume((1.0 - tick / totalTicks).clamp(0.0, 1.0));
+      if (tick >= totalTicks) { t.cancel(); onComplete?.call(); }
+    });
+  }
+
+  void _fadeInAudio() {
+    int tick = 0;
+    const totalTicks = 50;
+    Timer.periodic(const Duration(milliseconds: 30), (t) {
+      tick++;
+      _player.setVolume((tick / totalTicks).clamp(0.0, 1.0));
+      if (tick >= totalTicks) t.cancel();
+    });
+  }
+
   Future<List<String>> _fetchTracks(String folderUrl) async {
     final response = await http.get(Uri.parse(folderUrl));
     if (response.statusCode != 200) return [];
@@ -112,6 +138,8 @@ class _SamsaraScreenState extends State<SamsaraScreen>
     await _player.setLoopMode(LoopMode.all);
     await _player.setVolume(1.0);
     await _player.play();
+    await Future.delayed(const Duration(milliseconds: 300));
+    _audioStarted = true;
   }
 
   void _startTimer() {
@@ -122,7 +150,7 @@ class _SamsaraScreenState extends State<SamsaraScreen>
       final elapsed = DateTime.now().difference(_sessionStartTime!).inSeconds;
       setState(() => _elapsedSeconds = elapsed);
       FlutterForegroundTask.updateService(
-        notificationTitle: 'Ananda',
+        notificationTitle: 'GHAMMA',
         notificationText: _formatTime(_elapsedSeconds),
       );
     });
@@ -131,16 +159,20 @@ class _SamsaraScreenState extends State<SamsaraScreen>
   void _togglePlay() {
     if (_isPlaying) {
       _ticker?.cancel();
-      _fadeTicker?.cancel();
-      _waveTicker.stop();
-      _player.stop();
-      FlutterForegroundTask.stopService();
-      setState(() {
-        _isPlaying = false;
-        _elapsedSeconds = 0;
-        _amplitude = 0.0;
-        _wavePhase = 0.0;
-        _lastTick = Duration.zero;
+      _audioStarted = false;
+      setState(() => _isPlaying = false);
+      _fadeOut();
+      _fadeOutAudio(onComplete: () {
+        _waveTicker.stop();
+        _player.stop();
+        _player.setVolume(1.0);
+        FlutterForegroundTask.stopService();
+        if (mounted) setState(() {
+          _elapsedSeconds = 0;
+          _amplitude = 0.0;
+          _wavePhase = 0.0;
+          _lastTick = Duration.zero;
+        });
       });
     } else {
       setState(() => _isPlaying = true);
@@ -148,7 +180,7 @@ class _SamsaraScreenState extends State<SamsaraScreen>
       _waveTicker.start();
       FlutterForegroundTask.startService(
         serviceId: 257,
-        notificationTitle: 'Ananda — meditazione attiva',
+        notificationTitle: 'GHAMMA — active meditation',
         notificationText: '00:00',
       );
       _startAudio();
@@ -157,8 +189,16 @@ class _SamsaraScreenState extends State<SamsaraScreen>
     }
   }
 
-  Future<void> _skipNext() async => _player.seekToNext();
-  Future<void> _skipPrev() async => _player.seekToPrevious();
+  void _skipWithFade(Future<void> Function() seekAction) {
+    _seekingManually = true;
+    _fadeOut(onComplete: () {
+      seekAction().then((_) => _fadeIn());
+    });
+    _fadeOutAudio(onComplete: _fadeInAudio);
+  }
+
+  Future<void> _skipNext() { _skipWithFade(_player.seekToNext); return Future.value(); }
+  Future<void> _skipPrev() { _skipWithFade(_player.seekToPrevious); return Future.value(); }
 
   String _formatTime(int totalSeconds) {
     final m = totalSeconds ~/ 60;
@@ -174,6 +214,19 @@ class _SamsaraScreenState extends State<SamsaraScreen>
     _player.dispose();
     super.dispose();
   }
+
+  Widget _swipeHandle() => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Center(
+      child: Container(
+        width: 36, height: 4,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -210,21 +263,29 @@ class _SamsaraScreenState extends State<SamsaraScreen>
                               borderRadius: BorderRadius.circular(28),
                               border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
                             ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Column(
-                                children: [
-                                    Center(
-                                      child: Container(
-                                        width: 36, height: 4,
-                                        margin: const EdgeInsets.only(bottom: 12),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.18),
-                                          borderRadius: BorderRadius.circular(2),
+                            child: Column(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 24, right: 24),
+                                  child: Column(
+                                    children: [
+                                      // drag handle top — swipe down per info
+                                      Center(
+                                        child: Container(
+                                          width: 36, height: 4,
+                                          margin: const EdgeInsets.only(top: 15, bottom: 40),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withOpacity(0.18),
+                                            borderRadius: BorderRadius.circular(2),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  Expanded(
+                                    ],
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 24),
                                     child: CustomPaint(
                                       painter: SamsaraCirclePainter(
                                         wavePhase: _wavePhase,
@@ -234,44 +295,53 @@ class _SamsaraScreenState extends State<SamsaraScreen>
                                       child: const SizedBox.expand(),
                                     ),
                                   ),
-                                  const SizedBox(height: 16),
-                                  Text('SAMSARA', style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 28, letterSpacing: 10, fontWeight: FontWeight.w200)),
-                                  const SizedBox(height: 6),
-                                  Text('Ambient Soundscapes', style: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 11, letterSpacing: 3.5, fontWeight: FontWeight.w300)),
-                                  const SizedBox(height: 8),
-                                  Text(_formatTime(_elapsedSeconds), style: const TextStyle(color: Color(0xFFCCCCCC), fontSize: 52, fontWeight: FontWeight.w200, letterSpacing: 6)),
-                                  const SizedBox(height: 24),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 24, right: 24),
+                                  child: Column(
                                     children: [
-                                      GestureDetector(onTap: _skipPrev, child: _controlBtn(Icons.skip_previous_rounded)),
-                                      const SizedBox(width: 16),
-                                      GestureDetector(
-                                        onTap: _togglePlay,
-                                        child: SizedBox(
-                                          width: 130, height: 48,
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withOpacity(0.09),
-                                              borderRadius: BorderRadius.circular(14),
-                                              border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
+                                      const SizedBox(height: 16),
+                                      Text('SAMSARA', style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 28, letterSpacing: 10, fontWeight: FontWeight.w200)),
+                                      const SizedBox(height: 6),
+                                      Text('Ambient Soundscapes', style: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 11, letterSpacing: 3.5, fontWeight: FontWeight.w300)),
+                                      const SizedBox(height: 8),
+                                      Text(_formatTime(_elapsedSeconds), style: const TextStyle(color: Color(0xFFCCCCCC), fontSize: 52, fontWeight: FontWeight.w200, letterSpacing: 6)),
+                                      const SizedBox(height: 24),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          GestureDetector(onTap: _skipPrev, child: _controlBtn(Icons.skip_previous_rounded)),
+                                          const SizedBox(width: 16),
+                                          GestureDetector(
+                                            onTap: _togglePlay,
+                                            child: SizedBox(
+                                              width: 130, height: 48,
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white.withOpacity(0.09),
+                                                  borderRadius: BorderRadius.circular(14),
+                                                  border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
+                                                ),
+                                                child: Center(child: Text(_isPlaying ? 'STOP' : 'PLAY', style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 12, letterSpacing: 2.5, fontWeight: FontWeight.w400))),
+                                              ),
                                             ),
-                                            child: Center(child: Text(_isPlaying ? 'STOP' : 'PLAY', style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 12, letterSpacing: 2.5, fontWeight: FontWeight.w400))),
                                           ),
-                                        ),
+                                          const SizedBox(width: 16),
+                                          GestureDetector(onTap: _skipNext, child: _controlBtn(Icons.skip_next_rounded)),
+                                        ],
                                       ),
-                                      const SizedBox(width: 16),
-                                      GestureDetector(onTap: _skipNext, child: _controlBtn(Icons.skip_next_rounded)),
+                                      const SizedBox(height: 35),
                                     ],
                                   ),
-                                  const SizedBox(height: 8),
-                                ],
-                              ),
+                                ),
+                                // handle swipe up — fuori dal padding
+                                _swipeHandle(),
+                              ],
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 28), // spazio per i dots
+                      const SizedBox(height: 28),
                     ],
                   ),
                 ],
@@ -282,16 +352,6 @@ class _SamsaraScreenState extends State<SamsaraScreen>
       ),
     );
   }
-
-  Widget _iconBtn(IconData icon) => Container(
-    width: 36, height: 36,
-    decoration: BoxDecoration(
-      color: Colors.white.withOpacity(0.06),
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
-    ),
-    child: Icon(icon, color: Colors.white.withOpacity(0.55), size: 16),
-  );
 
   Widget _controlBtn(IconData icon) => Container(
     width: 48, height: 48,
@@ -304,7 +364,7 @@ class _SamsaraScreenState extends State<SamsaraScreen>
   );
 }
 
-// ── Painters (invariati) ──────────────────────────────────────────
+// ── Painters ─────────────────────────────────────────────────────
 
 class SamsaraCirclePainter extends CustomPainter {
   final double wavePhase;

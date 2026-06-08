@@ -44,17 +44,16 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
   bool _showDurationPicker = false;
   Timer? _timer;
   final AudioPlayer _bellPlayer = AudioPlayer();
+
   static const List<String> _bellAssets = [
-  'assets/audio/bell2.mp3',
-  'assets/audio/bell3.mp3',
-  'assets/audio/bell4.mp3',
-  'assets/audio/bell5.mp3',
-  'assets/audio/bell6.mp3',
+    'assets/audio/bell2.mp3',
+    'assets/audio/bell3.mp3',
+    'assets/audio/bell4.mp3',
+    'assets/audio/bell5.mp3',
+    'assets/audio/bell6.mp3',
   ];
 
-  String _randomBell() {
-  return _bellAssets[math.Random().nextInt(_bellAssets.length)];
-  }
+  String _randomBell() => _bellAssets[math.Random().nextInt(_bellAssets.length)];
 
   late AnimationController _pulseController;
   late AnimationController _lotusController;
@@ -62,7 +61,7 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
   DateTime? _sessionStartTime;
   int _elapsedSecondsAtPause = 0;
 
-  static const List<int> _minuteOptions = [5, 10, 15, 20, 25, 30, 45, 60];
+  static const List<int> _minuteOptions = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60];
 
   @override
   void initState() {
@@ -72,9 +71,6 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
     _lotusController = AnimationController(vsync: this, duration: const Duration(seconds: 120))..repeat();
     _initForegroundTask();
     _loadSavedDuration();
-
-    // Silence non ha una info screen — registra un no-op
-    // (il callback è opzionale, NavigatorScreen non chiamerà nulla)
   }
 
   void _initForegroundTask() {
@@ -104,7 +100,7 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
     await FlutterForegroundTask.saveData(key: 'endTime', value: endTimeMs.toString());
     await FlutterForegroundTask.saveData(key: 'title', value: 'GHAMMA · Silence');
     await FlutterForegroundTask.startService(
-      serviceId: 257,
+      serviceId: 258,
       notificationTitle: 'GHAMMA · Silence',
       notificationText: _formatTime(_remainingSeconds),
       callback: startMeditationCallback,
@@ -191,6 +187,19 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
   double get _progress => _totalSeconds > 0 ? _elapsedSeconds / _totalSeconds : 0.0;
   bool get _showResetSlot => !_isRunning && (_elapsedSecondsAtPause > 0 || _sessionEnded);
 
+  Widget _swipeHandle() => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Center(
+      child: Container(
+        width: 36, height: 4,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -235,11 +244,11 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
                               borderRadius: BorderRadius.circular(28),
                               border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
                             ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Column(
-                                children: [
-                                  Expanded(
+                            child: Column(
+                              children: [
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(left: 24, right: 24),
                                     child: AnimatedBuilder(
                                       animation: _pulseController,
                                       builder: (context, _) => CustomPaint(
@@ -249,12 +258,12 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
                                             child: Column(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                Text(_displayTime, style: const TextStyle(color: Color(0xFFCCCCCC), fontSize: 52, fontWeight: FontWeight.w200, letterSpacing: 6)),
-                                                const SizedBox(height: 4),
                                                 Text(
                                                   _isRunning ? 'running' : _sessionEnded ? 'complete' : 'ready',
                                                   style: TextStyle(color: Colors.white.withOpacity(0.25), fontSize: 15, fontWeight: FontWeight.w300, letterSpacing: 3),
                                                 ),
+                                                const SizedBox(height: 4),
+                                                Text(_displayTime, style: const TextStyle(color: Color(0xFFCCCCCC), fontSize: 52, fontWeight: FontWeight.w200, letterSpacing: 6)),
                                               ],
                                             ),
                                           ),
@@ -262,45 +271,54 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(height: 16),
-                                  Text('S I L E N C E', style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 28, fontWeight: FontWeight.w200, letterSpacing: 10)),
-                                  const SizedBox(height: 6),
-                                  Text('Meditation Timer', style: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 15, fontWeight: FontWeight.w300, letterSpacing: 3)),
-                                  const SizedBox(height: 24),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 24, right: 24),
+                                  child: Column(
                                     children: [
-                                      AnimatedSwitcher(
-                                        duration: const Duration(milliseconds: 200),
-                                        child: _showResetSlot
-                                            ? _ResetButton(key: const ValueKey('reset'), onTap: _reset)
-                                            : _DurationButton(key: const ValueKey('duration'), minutes: _selectedMinutes, onTap: () => setState(() => _showDurationPicker = !_showDurationPicker)),
-                                      ),
-                                      const SizedBox(width: 20),
-                                      GestureDetector(
-                                        onTap: _startStop,
-                                        child: SizedBox(
-                                          width: 130, height: 48,
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withOpacity(0.09),
-                                              borderRadius: BorderRadius.circular(14),
-                                              border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
-                                            ),
-                                            child: Center(child: Text(_isRunning ? 'STOP' : 'START', style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 12, letterSpacing: 2.5, fontWeight: FontWeight.w400))),
+                                      const SizedBox(height: 16),
+                                      Text('S I L E N C E', style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 28, fontWeight: FontWeight.w200, letterSpacing: 10)),
+                                      const SizedBox(height: 6),
+                                      Text('Meditation Timer', style: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 15, fontWeight: FontWeight.w300, letterSpacing: 3)),
+                                      const SizedBox(height: 24),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          AnimatedSwitcher(
+                                            duration: const Duration(milliseconds: 200),
+                                            child: _showResetSlot
+                                                ? _ResetButton(key: const ValueKey('reset'), onTap: _reset)
+                                                : _DurationButton(key: const ValueKey('duration'), minutes: _selectedMinutes, onTap: () => setState(() => _showDurationPicker = !_showDurationPicker)),
                                           ),
-                                        ),
+                                          const SizedBox(width: 20),
+                                          GestureDetector(
+                                            onTap: _startStop,
+                                            child: SizedBox(
+                                              width: 130, height: 48,
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white.withOpacity(0.09),
+                                                  borderRadius: BorderRadius.circular(14),
+                                                  border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
+                                                ),
+                                                child: Center(child: Text(_isRunning ? 'STOP' : 'START', style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 12, letterSpacing: 2.5, fontWeight: FontWeight.w400))),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
+                                      const SizedBox(height: 30),
                                     ],
                                   ),
-                                  const SizedBox(height: 8),
-                                ],
-                              ),
+                                ),
+                                // handle swipe up — fuori dal padding
+                                _swipeHandle(),
+                              ],
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 28), // spazio per i dots
+                      const SizedBox(height: 28),
                     ],
                   ),
                   if (_showDurationPicker)

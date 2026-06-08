@@ -58,68 +58,75 @@ class _SamsaraInfoScreenState extends State<SamsaraInfoScreen>
         alignment: Alignment.topCenter,
         child: SlideTransition(
           position: _slideAnim,
-          child: GestureDetector(
-            onVerticalDragStart:  _onDragStart,
-            onVerticalDragUpdate: _onDragUpdate,
-            onVerticalDragEnd:    _onDragEnd,
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [Color(0xFF1A1E18), Color(0xFF1A1E18), Color(0x5973521F)],
-                  stops: [0.0, 0.45, 1.0],
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12), 
+            child: GestureDetector(
+              onVerticalDragStart:  _onDragStart,
+              onVerticalDragUpdate: _onDragUpdate,
+              onVerticalDragEnd:    _onDragEnd,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),         // ← tutti e 4
+                  gradient: const LinearGradient(
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                    colors: [Color(0xFF1A1E18), Color(0xFF1A1E18), Color(0x5973521F)],
+                    stops: [0.0, 0.45, 1.0],
+                  ),
                 ),
-              ),
-              child: SafeArea(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 16),
-                    // titolo
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      child: Center(
-                        child: Text(
-                          'A M B I E N T   S O U N D S C A P E S',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.55),
-                            fontSize: 14,
-                            letterSpacing: 3,
-                            fontWeight: FontWeight.w300,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),                          
+                  child: SafeArea(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 16),
+                        // titolo
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          child: Center(
+                            child: Text(
+                              'A M B I E N T   S O U N D S C A P E S',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.55),
+                                fontSize: 14,
+                                letterSpacing: 2,
+                                fontWeight: FontWeight.w300,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                    // contenuto
-                    SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 8),
-                          _paragraph('This section contains a constantly updated selection of audio material that can offer support and assistance to states of relaxation, focus, and insight, or serve as a sonic background for work, study, or moments of socialization.'),
-                          _divider(),
-                          _paragraph('Tracks are created by a collective of artists revolving around idiom studio, particularly the eoni project. For more info and to support the artists: www.eoni.cloud and www.idiomstudio.net'),
-                          _divider(),
-                          const SizedBox(height: 16),
-                        ],
-                      ),
-                    ),
-                    // drag handle in fondo — invito swipe up per chiudere
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8, bottom: 16),
-                      child: Center(
-                        child: Container(
-                          width: 36, height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.20),
-                            borderRadius: BorderRadius.circular(2),
+                        // contenuto
+                        SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(horizontal: 28),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 8),
+                              _paragraph('This section contains a constantly updated selection of audio material that can offer support and assistance to states of relaxation, focus, and insight, or serve as a sonic background for work, study, or moments of socialization.'),
+                              _divider(),
+                              _paragraph('All music by eoni (eoni.cloud) - mixed and mastered at idiom studio (idiomstudio.net)'),
+                              _divider(),
+                              const SizedBox(height: 16),
+                            ],
                           ),
                         ),
-                      ),
+                        // drag handle in fondo — invito swipe up per chiudere
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8, bottom: 16),
+                          child: Center(
+                            child: Container(
+                              width: 36, height: 4,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.20),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),

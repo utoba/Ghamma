@@ -58,68 +58,75 @@ class _InfoScreenState extends State<InfoScreen>
         alignment: Alignment.topCenter,
         child: SlideTransition(
           position: _slideAnim,
-          child: GestureDetector(
-            onVerticalDragStart:  _onDragStart,
-            onVerticalDragUpdate: _onDragUpdate,
-            onVerticalDragEnd:    _onDragEnd,
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [Color(0xFF1A1E18), Color(0xFF1A1E18), Color(0x5973521F)],
-                  stops: [0.0, 0.45, 1.0],
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: GestureDetector(
+              onVerticalDragStart:  _onDragStart,
+              onVerticalDragUpdate: _onDragUpdate,
+              onVerticalDragEnd:    _onDragEnd,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                    colors: [Color(0xFF1A1E18), Color(0xFF1A1E18), Color(0x5973521F)],
+                    stops: [0.0, 0.45, 1.0],
+                  ),
                 ),
-              ),
-              child: SafeArea(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 16),
-                    // titolo
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      child: Center(
-                        child: Text(
-                          'P U R E   T O N E S',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.55),
-                            fontSize: 15,
-                            letterSpacing: 3,
-                            fontWeight: FontWeight.w300,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: SafeArea(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 16),
+                        // titolo
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          child: Center(
+                            child: Text(
+                              'P U R E   T O N E S',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.55),
+                                fontSize: 15,
+                                letterSpacing: 3,
+                                fontWeight: FontWeight.w300,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                    // contenuto
-                    SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 8),
-                          _paragraph('This is a selection of binaural beats, isochronic tones, and bilateral beats — to offer a complete experience of what the study of sound and psychophysical states has to offer today. This section is best experienced with quality headphones.'),
-                          _divider(),
-                          _paragraph('These pure tones are the result of hours of personal meditation. They were recorded during my own sessions.'),
-                          _divider(),
-                          const SizedBox(height: 16),
-                        ],
-                      ),
-                    ),
-                    // drag handle in fondo — invito swipe up per chiudere
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8, bottom: 16),
-                      child: Center(
-                        child: Container(
-                          width: 36, height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.20),
-                            borderRadius: BorderRadius.circular(2),
+                        // contenuto
+                        SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(horizontal: 28),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 8),
+                              _paragraph('VOID is a curated selection of binaural beats, isochronic tones, and bilateral stimulation — spanning the full spectrum of brainwave entrainment research.'),
+                              _divider(),
+                              _paragraph('Each track was composed during personal meditation sessions, and reflects a direct, unmediated experience of the practice. Best listened to with quality stereo headphones.'),
+                              _divider(),
+                              const SizedBox(height: 16),
+                            ],
                           ),
                         ),
-                      ),
+                        // drag handle in fondo — invito swipe up per chiudere
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8, bottom: 16),
+                          child: Center(
+                            child: Container(
+                              width: 36, height: 4,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.20),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),

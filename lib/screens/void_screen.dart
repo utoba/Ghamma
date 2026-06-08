@@ -33,8 +33,6 @@ const List<_BrainwaveType> _brainwaves = [
 ];
 
 class VoidScreen extends StatefulWidget {
-  // Callback opzionali dal NavigatorScreen
-  // Se null, lo screen funziona standalone (compatibilità)
   final VoidCallback? onOpenInfo;
   final void Function(VoidCallback)? onRegisterInfo;
 
@@ -54,16 +52,15 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
   final AudioPlayer _bellPlayer = AudioPlayer();
 
   static const List<String> _bellAssets = [
-  'assets/audio/bell2.mp3',
-  'assets/audio/bell3.mp3',
-  'assets/audio/bell4.mp3',
-  'assets/audio/bell5.mp3',
-  'assets/audio/bell6.mp3',
+    'assets/audio/bell2.mp3',
+    'assets/audio/bell3.mp3',
+    'assets/audio/bell4.mp3',
+    'assets/audio/bell5.mp3',
+    'assets/audio/bell6.mp3',
   ];
 
-  String _randomBell() {
-    return _bellAssets[Random().nextInt(_bellAssets.length)];
-  }
+  String _randomBell() => _bellAssets[Random().nextInt(_bellAssets.length)];
+
   static const String _voidBaseUrl = 'https://www.eoni.cloud/ANANDA/AUDIO/VOID/';
   static const int _fadeOutSeconds = 20;
 
@@ -103,10 +100,7 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
     )..repeat();
 
     _initForegroundTask();
-
-    // Registra il callback per aprire info (swipe down dal NavigatorScreen)
     widget.onRegisterInfo?.call(_openInfo);
-
     WidgetsBinding.instance.addPostFrameCallback((_) => _onScreenReady());
   }
 
@@ -202,9 +196,7 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
     );
   }
 
-  Future<void> _stopForegroundTask() async {
-    await FlutterForegroundTask.stopService();
-  }
+  Future<void> _stopForegroundTask() async => FlutterForegroundTask.stopService();
 
   void _fadeIn() {
     _fadeTicker?.cancel();
@@ -384,6 +376,19 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  Widget _swipeHandle() => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Center(
+      child: Container(
+        width: 36, height: 4,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final progress = _totalSeconds > 0
@@ -433,22 +438,29 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                                 borderRadius: BorderRadius.circular(28),
                                 border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
                               ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(24),
-                                child: Column(
-                                  children: [
-                                    // drag handle — invito swipe down per info
-                                    Center(
-                                      child: Container(
-                                        width: 36, height: 4,
-                                        margin: const EdgeInsets.only(bottom: 12),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.18),
-                                          borderRadius: BorderRadius.circular(2),
+                              child: Column(
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 24, right: 24),
+                                    child: Column(
+                                      children: [
+                                        // drag handle top — swipe down per info
+                                        Center(
+                                          child: Container(
+                                            width: 36, height: 4,
+                                            margin: const EdgeInsets.only(top: 15, bottom: 40),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.18),
+                                              borderRadius: BorderRadius.circular(2),
+                                            ),
+                                          ),
                                         ),
-                                      ),
+                                      ],
                                     ),
-                                    Expanded(
+                                  ),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 24),
                                       child: AnimatedBuilder(
                                         animation: _lissajousController,
                                         builder: (_, __) => Stack(
@@ -468,90 +480,99 @@ class _VoidScreenState extends State<VoidScreen> with TickerProviderStateMixin {
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(height: 16),
-                                    Text('VOID', style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 28, letterSpacing: 10, fontWeight: FontWeight.w200)),
-                                    const SizedBox(height: 6),
-                                    Text('Pure Tones', style: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 15, letterSpacing: 3.5, fontWeight: FontWeight.w300)),
-                                    const SizedBox(height: 8),
-                                    Text(_formatTime(_remainingSeconds), style: const TextStyle(color: Color(0xFFCCCCCC), fontSize: 52, fontWeight: FontWeight.w200, letterSpacing: 6)),
-                                    const SizedBox(height: 16),
-                                    // Bottone brainwave
-                                    GestureDetector(
-                                      onTap: _isPlaying ? null : () => setState(() { _showBrainwavePicker = !_showBrainwavePicker; _showDurationPicker = false; }),
-                                      child: Container(
-                                        height: 44,
-                                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.07),
-                                          borderRadius: BorderRadius.circular(14),
-                                          border: Border.all(color: Colors.white.withOpacity(0.10), width: 1),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 24, right: 24),
+                                    child: Column(
+                                      children: [
+                                        const SizedBox(height: 16),
+                                        Text('VOID', style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 28, letterSpacing: 10, fontWeight: FontWeight.w200)),
+                                        const SizedBox(height: 6),
+                                        Text('Pure Tones', style: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 15, letterSpacing: 3.5, fontWeight: FontWeight.w300)),
+                                        const SizedBox(height: 8),
+                                        Text(_formatTime(_remainingSeconds), style: const TextStyle(color: Color(0xFFCCCCCC), fontSize: 52, fontWeight: FontWeight.w200, letterSpacing: 6)),
+                                        const SizedBox(height: 16),
+                                        // Bottone brainwave
+                                        GestureDetector(
+                                          onTap: _isPlaying ? null : () => setState(() { _showBrainwavePicker = !_showBrainwavePicker; _showDurationPicker = false; }),
+                                          child: Container(
+                                            height: 44,
+                                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.07),
+                                              borderRadius: BorderRadius.circular(14),
+                                              border: Border.all(color: Colors.white.withOpacity(0.10), width: 1),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                Text(bw.name, style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 13, letterSpacing: 3, fontWeight: FontWeight.w300)),
+                                                const SizedBox(width: 10),
+                                                Container(width: 1, height: 14, color: Colors.white.withOpacity(0.15)),
+                                                const SizedBox(width: 10),
+                                                Text(bw.range, style: TextStyle(color: Colors.white.withOpacity(0.40), fontSize: 12, letterSpacing: 1.5, fontWeight: FontWeight.w300)),
+                                              ],
+                                            ),
+                                          ),
                                         ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
+                                        const SizedBox(height: 16),
+                                        // Duration + Start
+                                        Row(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
-                                            Text(bw.name, style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 13, letterSpacing: 3, fontWeight: FontWeight.w300)),
-                                            const SizedBox(width: 10),
-                                            Container(width: 1, height: 14, color: Colors.white.withOpacity(0.15)),
-                                            const SizedBox(width: 10),
-                                            Text(bw.range, style: TextStyle(color: Colors.white.withOpacity(0.40), fontSize: 12, letterSpacing: 1.5, fontWeight: FontWeight.w300)),
+                                            GestureDetector(
+                                              onTap: () => setState(() { _showDurationPicker = !_showDurationPicker; _showBrainwavePicker = false; }),
+                                              child: SizedBox(
+                                                width: 130, height: 48,
+                                                child: Container(
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white.withOpacity(0.09),
+                                                    borderRadius: BorderRadius.circular(14),
+                                                    border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    children: [
+                                                      Icon(Icons.timer_outlined, color: Colors.white.withOpacity(0.65), size: 18),
+                                                      const SizedBox(width: 8),
+                                                      Text('$_selectedMinutes min', style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 14, letterSpacing: 1.2, fontWeight: FontWeight.w300)),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 20),
+                                            GestureDetector(
+                                              onTap: _togglePlay,
+                                              child: SizedBox(
+                                                width: 130, height: 48,
+                                                child: Container(
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white.withOpacity(0.09),
+                                                    borderRadius: BorderRadius.circular(14),
+                                                    border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
+                                                  ),
+                                                  child: Center(
+                                                    child: Text(_isPlaying ? 'STOP' : 'START', style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 12, letterSpacing: 2.5, fontWeight: FontWeight.w400)),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
                                           ],
                                         ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    // Duration + Start
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        GestureDetector(
-                                          onTap: () => setState(() { _showDurationPicker = !_showDurationPicker; _showBrainwavePicker = false; }),
-                                          child: SizedBox(
-                                            width: 130, height: 48,
-                                            child: Container(
-                                              decoration: BoxDecoration(
-                                                color: Colors.white.withOpacity(0.09),
-                                                borderRadius: BorderRadius.circular(14),
-                                                border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
-                                              ),
-                                              child: Row(
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                children: [
-                                                  Icon(Icons.timer_outlined, color: Colors.white.withOpacity(0.65), size: 18),
-                                                  const SizedBox(width: 8),
-                                                  Text('$_selectedMinutes min', style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 14, letterSpacing: 1.2, fontWeight: FontWeight.w300)),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 20),
-                                        GestureDetector(
-                                          onTap: _togglePlay,
-                                          child: SizedBox(
-                                            width: 130, height: 48,
-                                            child: Container(
-                                              decoration: BoxDecoration(
-                                                color: Colors.white.withOpacity(0.09),
-                                                borderRadius: BorderRadius.circular(14),
-                                                border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
-                                              ),
-                                              child: Center(
-                                                child: Text(_isPlaying ? 'STOP' : 'START', style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 12, letterSpacing: 2.5, fontWeight: FontWeight.w400)),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
+                                        const SizedBox(height: 30),
                                       ],
                                     ),
-                                    const SizedBox(height: 8),
-                                  ],
-                                ),
+                                  ),
+                                  // handle swipe up — fuori dal padding
+                                  _swipeHandle(),
+                                ],
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 28), // spazio per i dots
+                        const SizedBox(height: 28),
                       ],
                     ),
                     // Picker brainwave

@@ -1,0 +1,22 @@
+repository: https://github.com/utoba/Ghamma
+release_source: https://github.com/utoba/Ghamma/releases/download/v1.0.0/ghamma-1.0.0.apk
+name: Ghamma
+description: Ghamma is an Android meditation app built around original music, immersive ambient soundscapes composed and produced as both artistic works and tools for deep listening.
+summary: Meditation app
+tags:
+    - meditation
+    - ambient
+    - music
+    - binaural
+    - timer
+    - audio
+license: All Rights Reserved
+website: https://www.eoni.cloud
+icon: /Users/u/Desktop/ghamma/assets/icon/ghamma_icon.png
+images:
+    - /Users/u/Documents/GHAMMA_tools/screenshots/1.png
+    - /Users/u/Documents/GHAMMA_tools/screenshots/2.png
+    - /Users/u/Documents/GHAMMA_tools/screenshots/3.png
+    - /Users/u/Documents/GHAMMA_tools/screenshots/4.png
+metadata_sources:
+    - github

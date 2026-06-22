@@ -42,6 +42,12 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
   bool _isRunning = false;
   bool _sessionEnded = false;
   bool _showDurationPicker = false;
+
+  // --- PRE-COUNTDOWN ---
+  static const int _countdownStart = 5;
+  int _countdownSeconds = 0;   // > 0 significa che siamo nel countdown
+  bool get _isCountingDown => _countdownSeconds > 0;
+
   Timer? _timer;
   final AudioPlayer _bellPlayer = AudioPlayer();
 
@@ -50,7 +56,6 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
     'assets/audio/bell3.mp3',
     'assets/audio/bell4.mp3',
     'assets/audio/bell5.mp3',
-    'assets/audio/bell6.mp3',
   ];
 
   String _randomBell() => _bellAssets[math.Random().nextInt(_bellAssets.length)];
@@ -134,41 +139,91 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
 
   int get _remainingSeconds => (_totalSeconds - _elapsedSeconds).clamp(0, _totalSeconds);
 
+  // ------------------------------------------------------------------
+  // Testo e tempo da mostrare a schermo
+  // ------------------------------------------------------------------
+  String get _displayTime {
+    if (_isCountingDown) {
+      // Mostra "-N" durante il countdown (es. "-5", "-4"…)
+      return '-$_countdownSeconds';
+    }
+    return _formatTime(_remainingSeconds);
+  }
+
+  String get _statusLabel {
+    if (_isCountingDown) return 'get ready';
+    if (_isRunning) return 'running';
+    if (_sessionEnded) return 'complete';
+    return 'ready';
+  }
+
+  // ------------------------------------------------------------------
+  // Avvio / stop
+  // ------------------------------------------------------------------
   void _startStop() {
-    if (_isRunning) {
-      _elapsedSecondsAtPause = _elapsedSeconds;
+    if (_isRunning || _isCountingDown) {
+      // STOP: annulla tutto, anche eventuale countdown in corso
+      _elapsedSecondsAtPause = _isCountingDown ? 0 : _elapsedSeconds;
       _sessionStartTime = null;
+      _countdownSeconds = 0;
       _timer?.cancel();
       _stopForegroundTask();
-      setState(() => _isRunning = false);
+      setState(() {
+        _isRunning = false;
+        if (_isCountingDown) _elapsedSecondsAtPause = 0; // countdown interrotto → torna a 0
+      });
     } else {
+      // START: avvia il pre-countdown
       if (_sessionEnded) {
         _elapsedSecondsAtPause = 0;
         setState(() { _sessionEnded = false; _totalSeconds = _selectedMinutes * 60; });
       }
-      _sessionStartTime = DateTime.now();
-      _playBell();
-      _startForegroundTask();
-      setState(() => _isRunning = true);
+      setState(() => _countdownSeconds = _countdownStart);
+      _timer?.cancel();
       _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (_elapsedSeconds >= _totalSeconds) {
-          _timer?.cancel();
-          _stopForegroundTask();
-          _playBell();
-          setState(() { _isRunning = false; _sessionEnded = true; });
-        } else {
-          setState(() {});
+        if (_isCountingDown) {
+          // Siamo nel countdown
+          setState(() => _countdownSeconds--);
+          if (_countdownSeconds == 0) {
+            // Il countdown è finito → avvia la sessione vera
+            _timer?.cancel();
+            _beginSession();
+          }
         }
       });
     }
   }
+
+  void _beginSession() {
+    _sessionStartTime = DateTime.now();
+    _playBell();
+    _startForegroundTask();
+    setState(() => _isRunning = true);
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_elapsedSeconds >= _totalSeconds) {
+        _timer?.cancel();
+        _stopForegroundTask();
+        _playBell();
+        setState(() { _isRunning = false; _sessionEnded = true; });
+      } else {
+        setState(() {});
+      }
+    });
+  }
+
+  // ------------------------------------------------------------------
 
   void _reset() {
     _timer?.cancel();
     _stopForegroundTask();
     _elapsedSecondsAtPause = 0;
     _sessionStartTime = null;
-    setState(() { _isRunning = false; _sessionEnded = false; _totalSeconds = _selectedMinutes * 60; });
+    setState(() {
+      _isRunning = false;
+      _sessionEnded = false;
+      _countdownSeconds = 0;
+      _totalSeconds = _selectedMinutes * 60;
+    });
   }
 
   void _setDuration(int minutes) {
@@ -177,15 +232,21 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
     _stopForegroundTask();
     _elapsedSecondsAtPause = 0;
     _sessionStartTime = null;
-    setState(() { _selectedMinutes = minutes; _totalSeconds = minutes * 60; _isRunning = false; _sessionEnded = false; _showDurationPicker = false; });
+    setState(() {
+      _selectedMinutes = minutes;
+      _totalSeconds = minutes * 60;
+      _isRunning = false;
+      _sessionEnded = false;
+      _countdownSeconds = 0;
+      _showDurationPicker = false;
+    });
   }
 
   String _formatTime(int seconds) =>
       '${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}';
 
-  String get _displayTime => _formatTime(_remainingSeconds);
   double get _progress => _totalSeconds > 0 ? _elapsedSeconds / _totalSeconds : 0.0;
-  bool get _showResetSlot => !_isRunning && (_elapsedSecondsAtPause > 0 || _sessionEnded);
+  bool get _showResetSlot => !_isRunning && !_isCountingDown && (_elapsedSecondsAtPause > 0 || _sessionEnded);
 
   Widget _swipeHandle() => Padding(
     padding: const EdgeInsets.only(bottom: 12),
@@ -202,6 +263,9 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    // Testo del bottone: STOP sia durante countdown che durante sessione
+    final bool showStop = _isRunning || _isCountingDown;
+
     return GestureDetector(
       onTap: () { if (_showDurationPicker) setState(() => _showDurationPicker = false); },
       child: Scaffold(
@@ -252,18 +316,29 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
                                     child: AnimatedBuilder(
                                       animation: _pulseController,
                                       builder: (context, _) => CustomPaint(
-                                        painter: _SilenceRingPainter(progress: _progress, pulse: _isRunning ? _pulseController.value : 0.0),
+                                        painter: _SilenceRingPainter(
+                                          progress: _isCountingDown ? 0.0 : _progress,
+                                          pulse: (_isRunning || _isCountingDown) ? _pulseController.value : 0.0,
+                                        ),
                                         child: SizedBox.expand(
                                           child: Center(
                                             child: Column(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 Text(
-                                                  _isRunning ? 'running' : _sessionEnded ? 'complete' : 'ready',
-                                                  style: TextStyle(color: Colors.white.withOpacity(0.25), fontSize: 15, fontWeight: FontWeight.w300, letterSpacing: 3),
+                                                  _statusLabel,
+                                                  style: TextStyle(
+                                                    color: Colors.white.withOpacity(0.45),
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.w300,
+                                                    letterSpacing: 3,
+                                                  ),
                                                 ),
                                                 const SizedBox(height: 4),
-                                                Text(_displayTime, style: const TextStyle(color: Color(0xFFCCCCCC), fontSize: 52, fontWeight: FontWeight.w200, letterSpacing: 6)),
+                                                Text(
+                                                  _displayTime,
+                                                  style: const TextStyle(color: Color(0xFFCCCCCC), fontSize: 52, fontWeight: FontWeight.w200, letterSpacing: 6),
+                                                ),
                                               ],
                                             ),
                                           ),
@@ -288,7 +363,7 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
                                             duration: const Duration(milliseconds: 200),
                                             child: _showResetSlot
                                                 ? _ResetButton(key: const ValueKey('reset'), onTap: _reset)
-                                                : _DurationButton(key: const ValueKey('duration'), minutes: _selectedMinutes, onTap: () => setState(() => _showDurationPicker = !_showDurationPicker)),
+                                                : _DurationButton(key: const ValueKey('duration'), minutes: _selectedMinutes, onTap: _isCountingDown || _isRunning ? null : () => setState(() => _showDurationPicker = !_showDurationPicker)),
                                           ),
                                           const SizedBox(width: 20),
                                           GestureDetector(
@@ -301,7 +376,12 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
                                                   borderRadius: BorderRadius.circular(14),
                                                   border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
                                                 ),
-                                                child: Center(child: Text(_isRunning ? 'STOP' : 'START', style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 12, letterSpacing: 2.5, fontWeight: FontWeight.w400))),
+                                                child: Center(
+                                                  child: Text(
+                                                    showStop ? 'STOP' : 'START',
+                                                    style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 12, letterSpacing: 2.5, fontWeight: FontWeight.w400),
+                                                  ),
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -311,7 +391,6 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
                                     ],
                                   ),
                                 ),
-                                // handle swipe up — fuori dal padding
                                 _swipeHandle(),
                               ],
                             ),
@@ -369,18 +448,22 @@ class _SilenceScreenState extends State<SilenceScreen> with TickerProviderStateM
 
 class _DurationButton extends StatelessWidget {
   final int minutes;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   const _DurationButton({super.key, required this.minutes, required this.onTap});
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
     child: SizedBox(width: 130, height: 48,
       child: Container(
-        decoration: BoxDecoration(color: Colors.white.withOpacity(0.09), borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.white.withOpacity(0.12), width: 1)),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(onTap != null ? 0.09 : 0.04),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withOpacity(onTap != null ? 0.12 : 0.06), width: 1),
+        ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.timer_outlined, color: Colors.white.withOpacity(0.65), size: 18),
+          Icon(Icons.timer_outlined, color: Colors.white.withOpacity(onTap != null ? 0.65 : 0.30), size: 18),
           const SizedBox(width: 8),
-          Text('$minutes min', style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 14, letterSpacing: 1.2, fontWeight: FontWeight.w300)),
+          Text('$minutes min', style: TextStyle(color: Colors.white.withOpacity(onTap != null ? 0.65 : 0.30), fontSize: 14, letterSpacing: 1.2, fontWeight: FontWeight.w300)),
         ]),
       ),
     ),
